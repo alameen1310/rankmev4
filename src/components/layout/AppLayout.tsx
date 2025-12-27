@@ -7,9 +7,9 @@ export const AppLayout = () => {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background max-w-full overflow-x-hidden">
       <Header />
-      <main className="pt-14 pb-20">
+      <main className="pt-[calc(56px+env(safe-area-inset-top))] pb-[calc(80px+env(safe-area-inset-bottom))]">
         <Outlet />
       </main>
       {isAuthenticated && <BottomNavigation />}

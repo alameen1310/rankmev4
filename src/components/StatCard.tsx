@@ -19,13 +19,18 @@ export const StatCard = ({
   className,
 }: StatCardProps) => {
   return (
-    <div className={cn("glass rounded-xl p-4", className)}>
-      <Icon className={cn("h-5 w-5 mb-2", iconColor)} />
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      {subValue && (
-        <div className="text-xs text-success mt-1">{subValue}</div>
-      )}
+    <div className={cn(
+      "glass rounded-xl p-4 min-h-[120px] flex flex-col justify-between",
+      className
+    )}>
+      <Icon className={cn("h-5 w-5", iconColor)} />
+      <div>
+        <div className="text-2xl font-bold leading-tight">{value}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+        {subValue && (
+          <div className="text-xs text-success font-medium mt-1">{subValue}</div>
+        )}
+      </div>
     </div>
   );
 };

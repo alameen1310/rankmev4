@@ -34,7 +34,6 @@ export const QuizQuestion = ({
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
-          // Time's up - auto submit with no answer
           handleOptionSelect(-1);
           return 0;
         }
@@ -58,49 +57,51 @@ export const QuizQuestion = ({
   }, [selectedOption, timeLimit, timeLeft, onAnswer]);
 
   const getOptionClassName = (index: number) => {
+    const baseClasses = "p-4 rounded-xl text-left transition-all duration-200 touch-target w-full";
+    
     if (!showResult) {
       return cn(
-        "glass p-4 rounded-xl text-left transition-all duration-200",
-        "hover:bg-primary/10 hover:border-primary/30 hover:scale-[1.01]",
-        "active:scale-[0.99]"
+        baseClasses,
+        "glass hover:bg-primary/10 hover:border-primary/30",
+        "active:scale-[0.98]"
       );
     }
 
     if (index === question.correctIndex) {
-      return "bg-success/20 border-2 border-success p-4 rounded-xl text-left";
+      return cn(baseClasses, "bg-success/15 border-2 border-success");
     }
 
     if (index === selectedOption && index !== question.correctIndex) {
-      return "bg-destructive/20 border-2 border-destructive p-4 rounded-xl text-left animate-shake";
+      return cn(baseClasses, "bg-destructive/15 border-2 border-destructive animate-shake");
     }
 
-    return "glass p-4 rounded-xl text-left opacity-50";
+    return cn(baseClasses, "glass opacity-50");
   };
 
   const timePercentage = (timeLeft / timeLimit) * 100;
   const isLowTime = timeLeft <= 10;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Progress and Timer */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex-1">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-muted-foreground">
-              Question {questionNumber} of {totalQuestions}
+          <div className="flex justify-between text-sm mb-1.5">
+            <span className="text-muted-foreground font-medium">
+              Q{questionNumber}/{totalQuestions}
             </span>
-            <span className="font-medium text-primary">+{question.points} pts</span>
+            <span className="font-semibold text-primary">+{question.points} pts</span>
           </div>
           <Progress value={(questionNumber / totalQuestions) * 100} className="h-2" />
         </div>
         
         <div className={cn(
-          "flex items-center justify-center w-14 h-14 rounded-full font-bold text-lg",
+          "flex items-center justify-center w-12 h-12 rounded-full font-bold text-base shrink-0",
           isLowTime 
-            ? "bg-destructive/20 text-destructive animate-pulse" 
-            : "bg-primary/20 text-primary"
+            ? "bg-destructive/15 text-destructive animate-pulse" 
+            : "bg-primary/15 text-primary"
         )}>
-          {timeLeft}s
+          {timeLeft}
         </div>
       </div>
 
@@ -116,20 +117,20 @@ export const QuizQuestion = ({
       </div>
 
       {/* Question */}
-      <div className="glass rounded-2xl p-6">
+      <div className="glass rounded-2xl p-5">
         <span className={cn(
-          "inline-block px-3 py-1 rounded-full text-xs font-medium mb-3",
-          question.difficulty === 'easy' && "bg-success/20 text-success",
-          question.difficulty === 'medium' && "bg-warning/20 text-warning",
-          question.difficulty === 'hard' && "bg-destructive/20 text-destructive"
+          "inline-block px-2.5 py-1 rounded-full text-[10px] font-semibold mb-3 uppercase tracking-wide",
+          question.difficulty === 'easy' && "bg-success/15 text-success",
+          question.difficulty === 'medium' && "bg-warning/15 text-warning",
+          question.difficulty === 'hard' && "bg-destructive/15 text-destructive"
         )}>
-          {question.difficulty.toUpperCase()}
+          {question.difficulty}
         </span>
-        <h2 className="text-xl font-bold leading-relaxed">{question.question}</h2>
+        <h2 className="text-lg font-bold leading-relaxed">{question.question}</h2>
       </div>
 
       {/* Options */}
-      <div className="grid gap-3">
+      <div className="grid gap-2.5">
         {question.options.map((option, index) => (
           <button
             key={index}
@@ -139,7 +140,7 @@ export const QuizQuestion = ({
           >
             <div className="flex items-center gap-3">
               <span className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm",
+                "w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm shrink-0",
                 showResult && index === question.correctIndex 
                   ? "bg-success text-success-foreground"
                   : showResult && index === selectedOption && index !== question.correctIndex
@@ -148,13 +149,13 @@ export const QuizQuestion = ({
               )}>
                 {String.fromCharCode(65 + index)}
               </span>
-              <span className="font-medium">{option}</span>
+              <span className="font-medium text-sm flex-1 text-left">{option}</span>
               
               {showResult && index === question.correctIndex && (
-                <span className="ml-auto text-success">✓</span>
+                <span className="text-success text-lg shrink-0">✓</span>
               )}
               {showResult && index === selectedOption && index !== question.correctIndex && (
-                <span className="ml-auto text-destructive">✗</span>
+                <span className="text-destructive text-lg shrink-0">✗</span>
               )}
             </div>
           </button>

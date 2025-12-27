@@ -4,36 +4,103 @@ import type { SubjectInfo } from '@/types';
 interface SubjectCardProps {
   subject: SubjectInfo;
   onClick: () => void;
+  userProgress?: number;
+  highScore?: number;
   className?: string;
 }
 
-export const SubjectCard = ({ subject, onClick, className }: SubjectCardProps) => {
+export const SubjectCard = ({ 
+  subject, 
+  onClick, 
+  userProgress = 0,
+  highScore,
+  className 
+}: SubjectCardProps) => {
+  const progressPercent = Math.min(userProgress, 100);
+  const circumference = 2 * Math.PI * 18;
+  const strokeDashoffset = circumference - (progressPercent / 100) * circumference;
+
   return (
     <button
       onClick={onClick}
       className={cn(
         "group relative overflow-hidden rounded-2xl p-4 text-left transition-all duration-300",
-        "glass hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]",
+        "glass hover:shadow-md active:scale-[0.98]",
+        "min-h-[140px] w-full touch-target",
         className
       )}
     >
+      {/* Background color accent */}
       <div className={cn(
-        "absolute inset-0 opacity-10 transition-opacity group-hover:opacity-20",
+        "absolute inset-0 opacity-5 transition-opacity group-hover:opacity-10",
         subject.color
       )} />
       
-      <div className="relative z-10">
-        <span className="text-3xl mb-2 block">{subject.icon}</span>
-        <h3 className="font-bold text-lg mb-1">{subject.name}</h3>
-        <p className="text-sm text-muted-foreground">
-          {subject.questionsCount} questions
-        </p>
-      </div>
+      <div className="relative z-10 h-full flex flex-col">
+        {/* Icon with progress ring */}
+        <div className="relative w-12 h-12 mb-3">
+          {/* Progress ring */}
+          {userProgress > 0 && (
+            <svg
+              className="absolute inset-0 -rotate-90"
+              width="48"
+              height="48"
+              viewBox="0 0 48 48"
+            >
+              <circle
+                cx="24"
+                cy="24"
+                r="18"
+                stroke="currentColor"
+                strokeWidth="3"
+                fill="none"
+                className="text-muted/30"
+              />
+              <circle
+                cx="24"
+                cy="24"
+                r="18"
+                stroke="currentColor"
+                strokeWidth="3"
+                fill="none"
+                strokeLinecap="round"
+                className="text-success transition-all duration-500"
+                style={{
+                  strokeDasharray: circumference,
+                  strokeDashoffset,
+                }}
+              />
+            </svg>
+          )}
+          
+          {/* Icon */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-2xl">{subject.icon}</span>
+          </div>
+        </div>
 
-      <div className={cn(
-        "absolute top-2 right-2 w-2 h-2 rounded-full",
-        subject.color
-      )} />
+        {/* Subject info */}
+        <div className="flex-1">
+          <h3 className="font-bold text-base mb-0.5 leading-tight">{subject.name}</h3>
+          <p className="text-xs text-muted-foreground">
+            {subject.questionsCount} questions
+          </p>
+        </div>
+
+        {/* High score badge */}
+        {highScore && highScore > 0 && (
+          <div className="mt-2 flex items-center gap-1">
+            <span className="text-xs">🏆</span>
+            <span className="text-xs font-medium text-warning">{highScore.toLocaleString()}</span>
+          </div>
+        )}
+
+        {/* Difficulty indicator dot */}
+        <div className={cn(
+          "absolute top-3 right-3 w-2 h-2 rounded-full",
+          subject.color
+        )} />
+      </div>
     </button>
   );
 };

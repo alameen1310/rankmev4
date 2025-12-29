@@ -14,7 +14,177 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      daily_streaks: {
+        Row: {
+          created_at: string | null
+          id: string
+          points_earned: number | null
+          streak_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          points_earned?: number | null
+          streak_date: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          points_earned?: number | null
+          streak_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          country: string | null
+          created_at: string | null
+          current_streak: number | null
+          display_name: string | null
+          id: string
+          longest_streak: number | null
+          tier: string | null
+          total_correct_answers: number | null
+          total_points: number | null
+          total_questions_answered: number | null
+          total_quizzes_completed: number | null
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          country?: string | null
+          created_at?: string | null
+          current_streak?: number | null
+          display_name?: string | null
+          id: string
+          longest_streak?: number | null
+          tier?: string | null
+          total_correct_answers?: number | null
+          total_points?: number | null
+          total_questions_answered?: number | null
+          total_quizzes_completed?: number | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          country?: string | null
+          created_at?: string | null
+          current_streak?: number | null
+          display_name?: string | null
+          id?: string
+          longest_streak?: number | null
+          tier?: string | null
+          total_correct_answers?: number | null
+          total_points?: number | null
+          total_questions_answered?: number | null
+          total_quizzes_completed?: number | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
+      quiz_results: {
+        Row: {
+          accuracy: number
+          average_time: number
+          completed_at: string | null
+          correct_answers: number
+          id: string
+          perfect_streak: number | null
+          subject: string
+          total_points: number
+          total_questions: number
+          user_id: string
+        }
+        Insert: {
+          accuracy: number
+          average_time: number
+          completed_at?: string | null
+          correct_answers: number
+          id?: string
+          perfect_streak?: number | null
+          subject: string
+          total_points: number
+          total_questions: number
+          user_id: string
+        }
+        Update: {
+          accuracy?: number
+          average_time?: number
+          completed_at?: string | null
+          correct_answers?: number
+          id?: string
+          perfect_streak?: number | null
+          subject?: string
+          total_points?: number
+          total_questions?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          earned_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          earned_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          earned_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_progress: {
+        Row: {
+          created_at: string | null
+          high_score: number | null
+          id: string
+          last_played_at: string | null
+          questions_attempted: number | null
+          questions_correct: number | null
+          subject: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          high_score?: number | null
+          id?: string
+          last_played_at?: string | null
+          questions_attempted?: number | null
+          questions_correct?: number | null
+          subject: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          high_score?: number | null
+          id?: string
+          last_played_at?: string | null
+          questions_attempted?: number | null
+          questions_correct?: number | null
+          subject?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

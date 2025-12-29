@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
-import { Clock, Trophy, TrendingUp } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Clock, Trophy, TrendingUp, RefreshCw } from 'lucide-react';
 import { SearchBar } from '@/components/SearchBar';
 import { FilterChips } from '@/components/FilterChips';
 import { LeaderboardRow } from '@/components/LeaderboardRow';
+import { LeaderboardSkeleton } from '@/components/Skeleton';
 import { BottomSheet } from '@/components/BottomSheet';
 import { TierBadge } from '@/components/TierBadge';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +36,14 @@ export const Leaderboard = () => {
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Simulate initial loading
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const resetTime = '6d 12h 34m';
 
@@ -77,6 +86,12 @@ export const Leaderboard = () => {
 
   const handleLoadMore = () => {
     setVisibleCount(prev => Math.min(prev + 20, filteredData.length));
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsRefreshing(false);
   };
 
   return (
@@ -191,33 +206,47 @@ export const Leaderboard = () => {
           <span className="text-xs text-muted-foreground">
             {filteredData.length} players
           </span>
-          {searchQuery && (
+          <div className="flex items-center gap-2">
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="text-xs text-primary font-medium"
+              >
+                Clear search
+              </button>
+            )}
             <button 
-              onClick={() => setSearchQuery('')}
-              className="text-xs text-primary font-medium"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="text-xs text-muted-foreground flex items-center gap-1 touch-target"
             >
-              Clear search
+              <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </button>
-          )}
+          </div>
         </div>
 
-        {/* List */}
-        <div className="space-y-2">
-          {filteredData
-            .slice(activeTab === 'global' && !searchQuery && selectedTiers.length === 0 ? 3 : 0, visibleCount)
-            .map((entry, index) => (
-              <div
-                key={entry.id}
-                className="animate-fade-in"
-                style={{ animationDelay: `${(index % 10) * 30}ms` }}
-              >
-                <LeaderboardRow
-                  entry={entry}
-                  isCurrentUser={entry.rank === user?.rank}
-                />
-              </div>
-            ))}
-        </div>
+        {/* List with loading state */}
+        {isLoading ? (
+          <LeaderboardSkeleton />
+        ) : (
+          <div className="space-y-2">
+            {filteredData
+              .slice(activeTab === 'global' && !searchQuery && selectedTiers.length === 0 ? 3 : 0, visibleCount)
+              .map((entry, index) => (
+                <div
+                  key={entry.id}
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${(index % 10) * 30}ms` }}
+                >
+                  <LeaderboardRow
+                    entry={entry}
+                    isCurrentUser={entry.rank === user?.rank}
+                  />
+                </div>
+              ))}
+          </div>
+        )}
 
         {/* Load More */}
         {visibleCount < filteredData.length && (

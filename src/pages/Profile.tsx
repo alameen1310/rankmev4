@@ -8,7 +8,8 @@ import {
   Calendar,
   ChevronRight,
   Lock,
-  Share2
+  Share2,
+  Gift
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -31,7 +32,7 @@ export const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-safe-bottom">
       {/* Profile Header */}
       <section className="relative overflow-hidden px-4 py-6">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-warning/5" />
@@ -54,15 +55,15 @@ export const Profile = () => {
           </p>
 
           <div className="flex justify-center gap-2">
-            <Button variant="outline" size="sm" className="h-9 touch-target">
+            <Button variant="secondary" size="sm" className="min-h-[44px]">
               <Share2 className="h-4 w-4 mr-2" />
               Share
             </Button>
-            <Button variant="outline" size="sm" className="h-9 touch-target">
+            <Button variant="secondary" size="sm" className="min-h-[44px]">
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>
-            <Button variant="outline" size="sm" className="h-9 touch-target" onClick={handleLogout}>
+            <Button variant="ghost" size="sm" className="min-h-[44px]" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -72,7 +73,7 @@ export const Profile = () => {
       {/* Stats with Circular Progress */}
       <section className="px-4 py-3">
         <div className="max-w-lg mx-auto">
-          <div className="glass rounded-2xl p-4">
+          <div className="glass rounded-2xl p-4 shadow-md">
             <div className="grid grid-cols-4 gap-4">
               <div className="flex flex-col items-center">
                 <CircularProgress 
@@ -123,15 +124,15 @@ export const Profile = () => {
             </h2>
           </div>
 
-          <div className="glass rounded-2xl p-4">
+          <div className="glass rounded-2xl p-4 shadow-md">
             <div className="grid grid-cols-3 gap-4">
               {user.badges.map((badge, index) => (
                 <div 
                   key={badge.id} 
-                  className="flex flex-col items-center animate-fade-in"
+                  className="flex flex-col items-center animate-fade-in cursor-pointer active:scale-95 transition-transform"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-warning/20 to-warning/5 flex items-center justify-center mb-1.5 shadow-sm">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-warning/20 to-warning/5 flex items-center justify-center mb-1.5 shadow-sm hover:shadow-md transition-shadow">
                     <span className="text-2xl">{badge.icon}</span>
                   </div>
                   <span className="text-[10px] text-center font-medium leading-tight line-clamp-2">
@@ -142,9 +143,10 @@ export const Profile = () => {
               
               {/* Locked badges */}
               {[1, 2].map((i) => (
-                <div key={`locked-${i}`} className="flex flex-col items-center opacity-40">
-                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-1.5">
-                    <Lock className="h-5 w-5 text-muted-foreground" />
+                <div key={`locked-${i}`} className="flex flex-col items-center opacity-40 grayscale">
+                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-1.5 relative">
+                    <span className="text-2xl">🔒</span>
+                    <Lock className="h-4 w-4 text-muted-foreground absolute bottom-0 right-0 bg-background rounded-full p-0.5" />
                   </div>
                   <span className="text-[10px] text-center text-muted-foreground">
                     Locked
@@ -164,52 +166,77 @@ export const Profile = () => {
           </h2>
 
           <div className="space-y-2">
-            {achievements.map((achievement, index) => (
-              <div
-                key={achievement.id}
-                className={cn(
-                  "glass rounded-xl p-4 animate-fade-in",
-                  !achievement.unlocked && "opacity-60"
-                )}
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={cn(
-                    "w-11 h-11 rounded-full flex items-center justify-center shrink-0",
-                    achievement.unlocked 
-                      ? "bg-gradient-to-br from-warning/20 to-warning/5" 
-                      : "bg-muted"
-                  )}>
-                    {achievement.unlocked ? (
-                      <span className="text-xl">{achievement.icon}</span>
-                    ) : (
-                      <Lock className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <h3 className="font-semibold text-sm">{achievement.name}</h3>
-                      {achievement.unlocked && (
-                        <span className="text-[10px] text-success font-medium">✓ Done</span>
+            {achievements.map((achievement, index) => {
+              const progressPercent = Math.min((achievement.progress / achievement.maxProgress) * 100, 100);
+              const isComplete = achievement.progress >= achievement.maxProgress;
+              
+              return (
+                <div
+                  key={achievement.id}
+                  className={cn(
+                    "glass rounded-xl p-4 animate-fade-in shadow-md hover:shadow-lg transition-shadow",
+                    !achievement.unlocked && !isComplete && "opacity-70"
+                  )}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      "w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-all",
+                      achievement.unlocked 
+                        ? "bg-gradient-to-br from-warning/20 to-warning/5 shadow-sm" 
+                        : isComplete
+                          ? "bg-success/20"
+                          : "bg-muted"
+                    )}>
+                      {achievement.unlocked || isComplete ? (
+                        <span className="text-xl">{achievement.icon}</span>
+                      ) : (
+                        <Lock className="h-4 w-4 text-muted-foreground" />
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
-                      {achievement.description}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Progress 
-                        value={(achievement.progress / achievement.maxProgress) * 100} 
-                        className="h-1.5 flex-1"
-                      />
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap font-medium">
-                        {achievement.progress}/{achievement.maxProgress}
-                      </span>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <h3 className="font-semibold text-sm">{achievement.name}</h3>
+                        {achievement.unlocked && (
+                          <span className="text-[10px] text-success font-medium">✓ Complete</span>
+                        )}
+                        {!achievement.unlocked && isComplete && (
+                          <Button size="sm" variant="success" className="h-7 text-xs px-3 min-h-0">
+                            <Gift className="h-3 w-3 mr-1" />
+                            Claim
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
+                        {achievement.description}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500",
+                              achievement.unlocked || isComplete 
+                                ? "bg-success" 
+                                : "bg-gradient-to-r from-primary to-primary/60"
+                            )}
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap font-medium">
+                          {achievement.progress}/{achievement.maxProgress}
+                        </span>
+                      </div>
+                      {achievement.reward && (
+                        <p className="text-[10px] text-warning mt-1.5 font-medium">
+                          🎁 {achievement.reward}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -217,7 +244,7 @@ export const Profile = () => {
       {/* Premium CTA */}
       <section className="px-4 py-4 pb-8">
         <div className="max-w-lg mx-auto">
-          <div className="glass rounded-2xl p-5 relative overflow-hidden">
+          <div className="glass rounded-2xl p-5 relative overflow-hidden shadow-lg">
             <div className="absolute inset-0 bg-gradient-to-br from-warning/15 to-primary/10" />
             
             <div className="relative">
@@ -228,7 +255,7 @@ export const Profile = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 Unlock unlimited AI tools, advanced analytics, and ad-free experience
               </p>
-              <Button className="w-full bg-warning text-warning-foreground hover:bg-warning/90 h-11 touch-target">
+              <Button className="w-full bg-warning text-warning-foreground hover:bg-warning/90 min-h-[48px] shadow-md">
                 Upgrade for $0.99/month
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>

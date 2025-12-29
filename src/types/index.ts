@@ -88,4 +88,5 @@ export interface Achievement {
   maxProgress: number;
   unlocked: boolean;
   unlockedAt?: Date;
+  reward?: string;
 }

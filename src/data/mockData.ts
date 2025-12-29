@@ -393,12 +393,12 @@ export const getQuestionsBySubject = (subject: Subject): Question[] => {
 };
 
 export const achievements: Achievement[] = [
-  { id: '1', name: 'First Steps', description: 'Complete your first quiz', icon: '👣', color: 'green', progress: 1, maxProgress: 1, unlocked: true, unlockedAt: new Date() },
-  { id: '2', name: 'Rising Star', description: 'Reach Silver tier', icon: '⭐', color: 'silver', progress: 3000, maxProgress: 3000, unlocked: true, unlockedAt: new Date() },
-  { id: '3', name: 'Gold Rush', description: 'Reach Gold tier', icon: '🏅', color: 'gold', progress: 7500, maxProgress: 7500, unlocked: true, unlockedAt: new Date() },
-  { id: '4', name: 'Streak Master', description: 'Maintain a 30-day streak', icon: '🔥', color: 'orange', progress: 7, maxProgress: 30, unlocked: false },
-  { id: '5', name: 'Quiz Champion', description: 'Win 100 quizzes', icon: '🏆', color: 'gold', progress: 42, maxProgress: 100, unlocked: false },
-  { id: '6', name: 'Perfect Score', description: 'Get 100% accuracy on 10 quizzes', icon: '💯', color: 'purple', progress: 3, maxProgress: 10, unlocked: false },
-  { id: '7', name: 'Speed Demon', description: 'Complete a quiz in under 2 minutes', icon: '⚡', color: 'yellow', progress: 0, maxProgress: 1, unlocked: false },
-  { id: '8', name: 'All-Rounder', description: 'Take quizzes in all subjects', icon: '🌟', color: 'rainbow', progress: 5, maxProgress: 8, unlocked: false },
+  { id: '1', name: 'First Steps', description: 'Complete your first quiz', icon: '👣', color: 'green', progress: 1, maxProgress: 1, unlocked: true, unlockedAt: new Date(), reward: '50 XP' },
+  { id: '2', name: 'Rising Star', description: 'Reach Silver tier', icon: '⭐', color: 'silver', progress: 1, maxProgress: 1, unlocked: true, unlockedAt: new Date(), reward: '100 XP' },
+  { id: '3', name: 'Gold Rush', description: 'Reach Gold tier', icon: '🏅', color: 'gold', progress: 1, maxProgress: 1, unlocked: true, unlockedAt: new Date(), reward: '250 XP' },
+  { id: '4', name: 'Streak Master', description: 'Maintain a 30-day streak', icon: '🔥', color: 'orange', progress: 7, maxProgress: 30, unlocked: false, reward: '500 XP + Badge' },
+  { id: '5', name: 'Quiz Champion', description: 'Win 100 quizzes', icon: '🏆', color: 'gold', progress: 42, maxProgress: 100, unlocked: false, reward: '1000 XP + Badge' },
+  { id: '6', name: 'Perfect Score', description: 'Get 100% accuracy on 10 quizzes', icon: '💯', color: 'purple', progress: 3, maxProgress: 10, unlocked: false, reward: '300 XP' },
+  { id: '7', name: 'Speed Demon', description: 'Complete a quiz in under 2 minutes', icon: '⚡', color: 'yellow', progress: 0, maxProgress: 1, unlocked: false, reward: '150 XP + Badge' },
+  { id: '8', name: 'All-Rounder', description: 'Take quizzes in all subjects', icon: '🌟', color: 'rainbow', progress: 5, maxProgress: 8, unlocked: false, reward: '400 XP' },
 ];

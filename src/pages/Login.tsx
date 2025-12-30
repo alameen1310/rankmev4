@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export const Login = () => {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuth();
+  const { signIn, isLoading } = useAuth();
   const { toast } = useToast();
 
   const [email, setEmail] = useState('');
@@ -28,20 +28,22 @@ export const Login = () => {
       return;
     }
 
-    try {
-      await login(email, password);
-      toast({
-        title: 'Welcome back!',
-        description: 'You have successfully signed in',
-      });
-      navigate('/dashboard');
-    } catch (error) {
+    const { error } = await signIn(email, password);
+    
+    if (error) {
       toast({
         title: 'Login failed',
-        description: 'Please check your credentials',
+        description: error.message || 'Please check your credentials',
         variant: 'destructive',
       });
+      return;
     }
+    
+    toast({
+      title: 'Welcome back!',
+      description: 'You have successfully signed in',
+    });
+    navigate('/dashboard');
   };
 
   return (

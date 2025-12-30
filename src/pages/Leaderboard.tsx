@@ -1,15 +1,15 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Clock, Trophy, TrendingUp, RefreshCw } from 'lucide-react';
+import { Clock, Trophy, RefreshCw } from 'lucide-react';
 import { SearchBar } from '@/components/SearchBar';
 import { FilterChips } from '@/components/FilterChips';
 import { LeaderboardRow } from '@/components/LeaderboardRow';
 import { LeaderboardSkeleton } from '@/components/Skeleton';
 import { BottomSheet } from '@/components/BottomSheet';
-import { TierBadge } from '@/components/TierBadge';
 import { useAuth } from '@/contexts/AuthContext';
-import { leaderboardData, subjects } from '@/data/mockData';
+import { getGlobalLeaderboard, getCountryLeaderboard, getUserRank, type LeaderboardEntryWithProfile } from '@/services/leaderboard';
+import { getSubjects, type DbSubject } from '@/services/quiz';
 import { cn } from '@/lib/utils';
-import type { LeaderboardTab, Tier } from '@/types';
+import type { LeaderboardTab, LeaderboardEntry, Tier } from '@/types';
 
 const tabs: { id: LeaderboardTab; label: string }[] = [
   { id: 'global', label: 'Global' },
@@ -28,8 +28,32 @@ const tierFilters = [
   { id: 'bronze', label: 'Bronze', icon: '🥉' },
 ];
 
+// Convert DB profile to leaderboard entry format
+function toLeaderboardEntry(entry: LeaderboardEntryWithProfile): LeaderboardEntry {
+  return {
+    id: entry.profile.id,
+    rank: entry.rank,
+    username: entry.profile.display_name || entry.profile.username || 'Anonymous',
+    avatar: entry.profile.avatar_url || undefined,
+    points: entry.points,
+    tier: (entry.profile.tier as Tier) || 'bronze',
+    country: entry.profile.country || 'US',
+    countryFlag: getCountryFlag(entry.profile.country || 'US'),
+    change: 'same' as const,
+  };
+}
+
+function getCountryFlag(country: string): string {
+  const flags: Record<string, string> = {
+    'US': '🇺🇸', 'NG': '🇳🇬', 'GB': '🇬🇧', 'GH': '🇬🇭', 
+    'KE': '🇰🇪', 'ZA': '🇿🇦', 'IN': '🇮🇳', 'CA': '🇨🇦',
+    'AU': '🇦🇺', 'DE': '🇩🇪',
+  };
+  return flags[country] || '🌍';
+}
+
 export const Leaderboard = () => {
-  const { user } = useAuth();
+  const { profile, user } = useAuth();
   const [activeTab, setActiveTab] = useState<LeaderboardTab>('global');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
@@ -38,12 +62,33 @@ export const Leaderboard = () => {
   const [visibleCount, setVisibleCount] = useState(20);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [subjects, setSubjects] = useState<DbSubject[]>([]);
+  const [userRank, setUserRank] = useState<number | null>(null);
 
-  // Simulate initial loading
+  // Fetch leaderboard data
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [data, subjectsData] = await Promise.all([
+          getGlobalLeaderboard(100),
+          getSubjects(),
+        ]);
+        setLeaderboardData(data.map(toLeaderboardEntry));
+        setSubjects(subjectsData);
+        
+        if (user) {
+          const rank = await getUserRank(user.id);
+          setUserRank(rank?.rank || null);
+        }
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+      }
+      setIsLoading(false);
+    };
+    fetchData();
+  }, [user]);
 
   const resetTime = '6d 12h 34m';
 
@@ -54,7 +99,7 @@ export const Leaderboard = () => {
     // Filter by tab
     switch (activeTab) {
       case 'country':
-        data = data.filter(e => e.country === user?.country);
+        data = data.filter(e => e.country === (profile?.country || 'US'));
         break;
       case 'friends':
         data = data.slice(0, 15);
@@ -79,10 +124,10 @@ export const Leaderboard = () => {
     }
 
     return data;
-  }, [activeTab, searchQuery, selectedTiers, user?.country]);
+  }, [activeTab, searchQuery, selectedTiers, profile?.country, leaderboardData]);
 
-  const userEntry = leaderboardData.find(e => e.rank === user?.rank);
-  const userInView = filteredData.some(e => e.rank === user?.rank);
+  const userEntry = userRank ? leaderboardData.find(e => e.rank === userRank) : null;
+  const userInView = userRank ? filteredData.some(e => e.rank === userRank) : false;
 
   const handleLoadMore = () => {
     setVisibleCount(prev => Math.min(prev + 20, filteredData.length));
@@ -90,7 +135,12 @@ export const Leaderboard = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const data = await getGlobalLeaderboard(100);
+      setLeaderboardData(data.map(toLeaderboardEntry));
+    } catch (error) {
+      console.error('Error refreshing:', error);
+    }
     setIsRefreshing(false);
   };
 
@@ -152,7 +202,7 @@ export const Leaderboard = () => {
       {/* Leaderboard Content */}
       <div className="max-w-lg mx-auto px-4 py-4">
         {/* Top 3 Podium - Only for global tab */}
-        {activeTab === 'global' && !searchQuery && selectedTiers.length === 0 && (
+        {activeTab === 'global' && !searchQuery && selectedTiers.length === 0 && filteredData.length >= 3 && (
           <div className="flex items-end justify-center gap-2 mb-6 pt-4">
             {/* 2nd Place */}
             <div className="flex flex-col items-center animate-fade-in" style={{ animationDelay: '100ms' }}>
@@ -241,7 +291,7 @@ export const Leaderboard = () => {
                 >
                   <LeaderboardRow
                     entry={entry}
-                    isCurrentUser={entry.rank === user?.rank}
+                    isCurrentUser={entry.id === user?.id}
                   />
                 </div>
               ))}
@@ -259,7 +309,7 @@ export const Leaderboard = () => {
         )}
 
         {/* Empty state */}
-        {filteredData.length === 0 && (
+        {filteredData.length === 0 && !isLoading && (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No players found</p>
           </div>
@@ -303,10 +353,10 @@ export const Leaderboard = () => {
                 {subjects.map(subject => (
                   <button
                     key={subject.id}
-                    onClick={() => setSelectedSubject(subject.id)}
+                    onClick={() => setSelectedSubject(subject.slug)}
                     className={cn(
                       "p-3 rounded-xl text-left transition-all flex items-center gap-2 touch-target",
-                      selectedSubject === subject.id 
+                      selectedSubject === subject.slug 
                         ? "bg-primary text-primary-foreground" 
                         : "bg-muted hover:bg-accent"
                     )}

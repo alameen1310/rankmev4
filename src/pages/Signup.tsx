@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export const Signup = () => {
   const navigate = useNavigate();
-  const { signup, isLoading } = useAuth();
+  const { signUp, isLoading } = useAuth();
   const { toast } = useToast();
 
   const [username, setUsername] = useState('');
@@ -48,20 +48,22 @@ export const Signup = () => {
       return;
     }
 
-    try {
-      await signup(email, password, username);
-      toast({
-        title: 'Account created!',
-        description: 'Welcome to RankMe. Let\'s start learning!',
-      });
-      navigate('/dashboard');
-    } catch (error) {
+    const { error } = await signUp(email, password, username);
+    
+    if (error) {
       toast({
         title: 'Signup failed',
-        description: 'Please try again',
+        description: error.message || 'Please try again',
         variant: 'destructive',
       });
+      return;
     }
+    
+    toast({
+      title: 'Account created!',
+      description: 'Welcome to RankMe. Let\'s start learning!',
+    });
+    navigate('/dashboard');
   };
 
   return (

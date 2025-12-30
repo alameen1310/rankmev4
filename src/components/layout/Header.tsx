@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export const Header = () => {
   const { theme, toggleTheme } = useTheme();
-  const { user, isAuthenticated } = useAuth();
+  const { profile, isAuthenticated } = useAuth();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border/50 safe-top">
@@ -46,7 +46,7 @@ export const Header = () => {
               <Link to="/profile">
                 <Avatar className="h-9 w-9 border-2 border-primary/50 transition-all hover:border-primary hover:scale-105">
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                    {user?.username.slice(0, 2).toUpperCase()}
+                    {profile?.username?.slice(0, 2).toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
               </Link>

@@ -1,33 +1,19 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  Settings, 
-  LogOut, 
-  Trophy, 
-  Target, 
-  Zap, 
-  Calendar,
-  ChevronRight,
-  Lock,
-  Share2,
-  Gift
-} from 'lucide-react';
+import { Settings, LogOut, Trophy, Zap, Calendar, ChevronRight, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Progress } from '@/components/ui/progress';
 import { TierBadge } from '@/components/TierBadge';
 import { CircularProgress } from '@/components/CircularProgress';
 import { useAuth } from '@/contexts/AuthContext';
-import { achievements } from '@/data/mockData';
-import { cn } from '@/lib/utils';
 
 export const Profile = () => {
-  const { user, logout } = useAuth();
+  const { profile, signOut } = useAuth();
   const navigate = useNavigate();
 
-  if (!user) return null;
+  if (!profile) return null;
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
 
@@ -41,17 +27,17 @@ export const Profile = () => {
           <div className="relative inline-block mb-3">
             <Avatar className="h-20 w-20 border-4 border-primary/30">
               <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                {user.username.slice(0, 2).toUpperCase()}
+                {(profile.username || 'U').slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2">
-              <TierBadge tier={user.tier} size="sm" />
+              <TierBadge tier={profile.tier} size="sm" />
             </div>
           </div>
 
-          <h1 className="text-xl font-bold mb-0.5">{user.username}</h1>
+          <h1 className="text-xl font-bold mb-0.5">{profile.username || 'User'}</h1>
           <p className="text-sm text-muted-foreground mb-4">
-            {user.countryFlag} {user.country} • Rank #{user.rank}
+            🌍 {profile.country || 'Global'} • {profile.tier} tier
           </p>
 
           <div className="flex justify-center gap-2">
@@ -70,17 +56,13 @@ export const Profile = () => {
         </div>
       </section>
 
-      {/* Stats with Circular Progress */}
+      {/* Stats */}
       <section className="px-4 py-3">
         <div className="max-w-lg mx-auto">
           <div className="glass rounded-2xl p-4 shadow-md">
             <div className="grid grid-cols-4 gap-4">
               <div className="flex flex-col items-center">
-                <CircularProgress 
-                  value={user.accuracy} 
-                  size="sm" 
-                  color="success"
-                />
+                <CircularProgress value={Math.round(profile.accuracy)} size="sm" color="success" />
                 <span className="text-[10px] text-muted-foreground mt-1.5">Accuracy</span>
               </div>
               
@@ -88,7 +70,7 @@ export const Profile = () => {
                 <div className="w-12 h-12 rounded-full bg-warning/15 flex items-center justify-center">
                   <Trophy className="h-5 w-5 text-warning" />
                 </div>
-                <span className="text-sm font-bold mt-1">{(user.points / 1000).toFixed(1)}k</span>
+                <span className="text-sm font-bold mt-1">{(profile.total_points / 1000).toFixed(1)}k</span>
                 <span className="text-[10px] text-muted-foreground">Points</span>
               </div>
               
@@ -96,7 +78,7 @@ export const Profile = () => {
                 <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center">
                   <Zap className="h-5 w-5 text-primary" />
                 </div>
-                <span className="text-sm font-bold mt-1">{user.totalQuizzes}</span>
+                <span className="text-sm font-bold mt-1">{profile.total_quizzes_completed}</span>
                 <span className="text-[10px] text-muted-foreground">Quizzes</span>
               </div>
               
@@ -104,139 +86,10 @@ export const Profile = () => {
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
                   <Calendar className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <span className="text-sm font-bold mt-1">Jan</span>
-                <span className="text-[10px] text-muted-foreground">Joined</span>
+                <span className="text-sm font-bold mt-1">{profile.current_streak}</span>
+                <span className="text-[10px] text-muted-foreground">Streak</span>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Badges - 3 Column Grid */}
-      <section className="px-4 py-3">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold flex items-center gap-2">
-              🏅 Badges
-              <span className="text-xs font-normal text-muted-foreground">
-                {user.badges.length} earned
-              </span>
-            </h2>
-          </div>
-
-          <div className="glass rounded-2xl p-4 shadow-md">
-            <div className="grid grid-cols-3 gap-4">
-              {user.badges.map((badge, index) => (
-                <div 
-                  key={badge.id} 
-                  className="flex flex-col items-center animate-fade-in cursor-pointer active:scale-95 transition-transform"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-warning/20 to-warning/5 flex items-center justify-center mb-1.5 shadow-sm hover:shadow-md transition-shadow">
-                    <span className="text-2xl">{badge.icon}</span>
-                  </div>
-                  <span className="text-[10px] text-center font-medium leading-tight line-clamp-2">
-                    {badge.name}
-                  </span>
-                </div>
-              ))}
-              
-              {/* Locked badges */}
-              {[1, 2].map((i) => (
-                <div key={`locked-${i}`} className="flex flex-col items-center opacity-40 grayscale">
-                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-1.5 relative">
-                    <span className="text-2xl">🔒</span>
-                    <Lock className="h-4 w-4 text-muted-foreground absolute bottom-0 right-0 bg-background rounded-full p-0.5" />
-                  </div>
-                  <span className="text-[10px] text-center text-muted-foreground">
-                    Locked
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Achievements with Progress */}
-      <section className="px-4 py-3">
-        <div className="max-w-lg mx-auto">
-          <h2 className="font-bold mb-3 flex items-center gap-2">
-            🎯 Achievements
-          </h2>
-
-          <div className="space-y-2">
-            {achievements.map((achievement, index) => {
-              const progressPercent = Math.min((achievement.progress / achievement.maxProgress) * 100, 100);
-              const isComplete = achievement.progress >= achievement.maxProgress;
-              
-              return (
-                <div
-                  key={achievement.id}
-                  className={cn(
-                    "glass rounded-xl p-4 animate-fade-in shadow-md hover:shadow-lg transition-shadow",
-                    !achievement.unlocked && !isComplete && "opacity-70"
-                  )}
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={cn(
-                      "w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-all",
-                      achievement.unlocked 
-                        ? "bg-gradient-to-br from-warning/20 to-warning/5 shadow-sm" 
-                        : isComplete
-                          ? "bg-success/20"
-                          : "bg-muted"
-                    )}>
-                      {achievement.unlocked || isComplete ? (
-                        <span className="text-xl">{achievement.icon}</span>
-                      ) : (
-                        <Lock className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <h3 className="font-semibold text-sm">{achievement.name}</h3>
-                        {achievement.unlocked && (
-                          <span className="text-[10px] text-success font-medium">✓ Complete</span>
-                        )}
-                        {!achievement.unlocked && isComplete && (
-                          <Button size="sm" variant="success" className="h-7 text-xs px-3 min-h-0">
-                            <Gift className="h-3 w-3 mr-1" />
-                            Claim
-                          </Button>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
-                        {achievement.description}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className={cn(
-                              "h-full rounded-full transition-all duration-500",
-                              achievement.unlocked || isComplete 
-                                ? "bg-success" 
-                                : "bg-gradient-to-r from-primary to-primary/60"
-                            )}
-                            style={{ width: `${progressPercent}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] text-muted-foreground whitespace-nowrap font-medium">
-                          {achievement.progress}/{achievement.maxProgress}
-                        </span>
-                      </div>
-                      {achievement.reward && (
-                        <p className="text-[10px] text-warning mt-1.5 font-medium">
-                          🎁 {achievement.reward}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       </section>

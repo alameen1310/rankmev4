@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { Question, Subject } from '@/types';
 
 export interface DbQuestion {
   id: number;
@@ -24,6 +25,34 @@ export interface DbSubject {
   description: string | null;
 }
 
+// Map subject slug to name for compatibility
+const subjectSlugMap: Record<Subject, string> = {
+  'mathematics': 'Mathematics',
+  'physics': 'Physics',
+  'chemistry': 'Chemistry',
+  'biology': 'Biology',
+  'english': 'English',
+  'history': 'History',
+  'geography': 'Geography',
+  'computer-science': 'Computer Science',
+};
+
+// Convert DB question to frontend Question type
+function convertDbQuestion(dbQ: DbQuestion, subjectSlug: Subject): Question {
+  const options = [dbQ.option_a, dbQ.option_b, dbQ.option_c, dbQ.option_d];
+  const correctIndex = ['A', 'B', 'C', 'D'].indexOf(dbQ.correct_answer.toUpperCase());
+  
+  return {
+    id: String(dbQ.id),
+    question: dbQ.question_text,
+    options,
+    correctIndex: correctIndex >= 0 ? correctIndex : 0,
+    subject: subjectSlug,
+    difficulty: (dbQ.difficulty as 'easy' | 'medium' | 'hard') || 'medium',
+    points: dbQ.points_value || 100,
+  };
+}
+
 export async function getSubjects(): Promise<DbSubject[]> {
   const { data, error } = await supabase
     .from('subjects')
@@ -37,34 +66,17 @@ export async function getSubjects(): Promise<DbSubject[]> {
   return (data || []) as DbSubject[];
 }
 
-export async function getQuestionsBySubjectId(
-  subjectId: number, 
-  limit: number = 10
-): Promise<DbQuestion[]> {
-  const { data, error } = await supabase
-    .from('questions')
-    .select('*')
-    .eq('subject_id', subjectId)
-    .limit(limit);
-  
-  if (error) {
-    console.error('Error fetching questions:', error);
-    throw error;
-  }
-  
-  // Shuffle and return
-  return ((data || []) as DbQuestion[]).sort(() => Math.random() - 0.5);
-}
-
 export async function getQuestionsBySubjectSlug(
-  subjectSlug: string, 
+  subjectSlug: Subject, 
   limit: number = 10
-): Promise<DbQuestion[]> {
-  // First get the subject ID from slug
+): Promise<Question[]> {
+  const subjectName = subjectSlugMap[subjectSlug];
+  
+  // First get the subject ID from name
   const { data: subject, error: subjectError } = await supabase
     .from('subjects')
     .select('id')
-    .eq('slug', subjectSlug)
+    .eq('name', subjectName)
     .maybeSingle();
   
   if (subjectError) {
@@ -77,15 +89,28 @@ export async function getQuestionsBySubjectSlug(
     return [];
   }
   
-  return getQuestionsBySubjectId(subject.id, limit);
+  const { data, error } = await supabase
+    .from('questions')
+    .select('*')
+    .eq('subject_id', subject.id)
+    .limit(limit);
+  
+  if (error) {
+    console.error('Error fetching questions:', error);
+    throw error;
+  }
+  
+  // Shuffle and convert
+  const shuffled = ((data || []) as DbQuestion[]).sort(() => Math.random() - 0.5);
+  return shuffled.map(q => convertDbQuestion(q, subjectSlug));
 }
 
 export async function submitQuizSession(
   userId: string,
   subjectName: string,
   answers: Array<{
-    questionId: number;
-    selectedAnswer: string;
+    questionId: string;
+    selectedAnswer: number;
     timeSpent: number;
     isCorrect: boolean;
     pointsEarned: number;
@@ -95,7 +120,9 @@ export async function submitQuizSession(
   const correctAnswers = answers.filter(a => a.isCorrect).length;
   const score = answers.reduce((total, a) => total + a.pointsEarned, 0);
   const accuracy = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
-  const totalTime = answers.reduce((t, a) => t + a.timeSpent, 0) / 1000; // Convert to seconds
+  const totalTime = answers.reduce((t, a) => t + a.timeSpent, 0);
+  
+  console.log('Submitting quiz session:', { userId, subjectName, score, correctAnswers, totalQuestions });
   
   // Create quiz session
   const { data: session, error: sessionError } = await supabase
@@ -106,7 +133,7 @@ export async function submitQuizSession(
       score,
       total_questions: totalQuestions,
       correct_answers: correctAnswers,
-      accuracy,
+      accuracy: parseFloat(accuracy.toFixed(2)),
       time_taken: Math.round(totalTime),
       completed_at: new Date().toISOString(),
     })
@@ -118,13 +145,15 @@ export async function submitQuizSession(
     throw sessionError;
   }
   
+  console.log('Quiz session created:', session);
+  
   // Insert all answers
   const userAnswers = answers.map((answer, index) => ({
     session_id: session.id,
-    question_id: answer.questionId,
-    selected_answer: answer.selectedAnswer,
+    question_id: parseInt(answer.questionId, 10) || null,
+    selected_answer: ['A', 'B', 'C', 'D'][answer.selectedAnswer] || 'A',
     is_correct: answer.isCorrect,
-    time_spent: answer.timeSpent,
+    time_spent: Math.round(answer.timeSpent),
     points_earned: answer.pointsEarned,
     answered_at: new Date(Date.now() + index * 100).toISOString(),
   }));
@@ -135,8 +164,11 @@ export async function submitQuizSession(
   
   if (answersError) {
     console.error('Error saving answers:', answersError);
-    // Don't throw, session is created
+    // Don't throw, session is created - answers are secondary
   }
+  
+  // The trigger `update_user_stats_after_quiz` will handle updating profiles
+  // and `sync_leaderboard_trigger` will update leaderboard entries
   
   // Update user streak
   try {
@@ -152,5 +184,12 @@ export async function submitQuizSession(
     console.error('Error checking badges:', e);
   }
   
-  return { session, score, accuracy, correctAnswers, totalQuestions };
+  // Recalculate leaderboard ranks
+  try {
+    await supabase.rpc('recalculate_leaderboard_ranks');
+  } catch (e) {
+    console.error('Error recalculating ranks:', e);
+  }
+  
+  return { session, score, accuracy: parseFloat(accuracy.toFixed(2)), correctAnswers, totalQuestions };
 }

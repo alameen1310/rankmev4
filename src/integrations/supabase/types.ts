@@ -93,6 +93,7 @@ export type Database = {
           answers_correct: number | null
           battle_id: string
           joined_at: string | null
+          ready: boolean | null
           score: number | null
           user_id: string
         }
@@ -100,6 +101,7 @@ export type Database = {
           answers_correct?: number | null
           battle_id: string
           joined_at?: string | null
+          ready?: boolean | null
           score?: number | null
           user_id: string
         }
@@ -107,6 +109,7 @@ export type Database = {
           answers_correct?: number | null
           battle_id?: string
           joined_at?: string | null
+          ready?: boolean | null
           score?: number | null
           user_id?: string
         }
@@ -127,11 +130,47 @@ export type Database = {
           },
         ]
       }
+      battle_questions: {
+        Row: {
+          battle_id: string
+          order_index: number
+          question_id: number
+        }
+        Insert: {
+          battle_id: string
+          order_index: number
+          question_id: number
+        }
+        Update: {
+          battle_id?: string
+          order_index?: number
+          question_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_questions_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "battles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_questions_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       battles: {
         Row: {
           completed_at: string | null
           created_at: string | null
+          created_by: string | null
           id: string
+          is_private: boolean | null
+          started_at: string | null
           status: string | null
           subject_id: number | null
           winner_id: string | null
@@ -139,7 +178,10 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          is_private?: boolean | null
+          started_at?: string | null
           status?: string | null
           subject_id?: number | null
           winner_id?: string | null
@@ -147,12 +189,22 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          is_private?: boolean | null
+          started_at?: string | null
           status?: string | null
           subject_id?: number | null
           winner_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "battles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "battles_subject_id_fkey"
             columns: ["subject_id"]
@@ -193,6 +245,81 @@ export type Database = {
         }
         Relationships: []
       }
+      friend_requests: {
+        Row: {
+          created_at: string | null
+          from_user_id: string
+          id: string
+          responded_at: string | null
+          status: string | null
+          to_user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          from_user_id: string
+          id?: string
+          responded_at?: string | null
+          status?: string | null
+          to_user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          from_user_id?: string
+          id?: string
+          responded_at?: string | null
+          status?: string | null
+          to_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friend_requests_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friend_requests_to_user_id_fkey"
+            columns: ["to_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      friendships: {
+        Row: {
+          created_at: string | null
+          friend_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          friend_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          friend_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friendships_friend_id_fkey"
+            columns: ["friend_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leaderboard_entries: {
         Row: {
           created_at: string | null
@@ -228,6 +355,47 @@ export type Database = {
           {
             foreignKeyName: "leaderboard_entries_profile_id_fkey"
             columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          data: Json | null
+          id: string
+          message: string | null
+          read: boolean | null
+          title: string | null
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          message?: string | null
+          read?: boolean | null
+          title?: string | null
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          message?: string | null
+          read?: boolean | null
+          title?: string | null
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -669,6 +837,16 @@ export type Database = {
           total_points: number
         }[]
       }
+      increment_user_points: {
+        Args: {
+          p_increment_quizzes: number
+          p_points_to_add: number
+          p_user_id: string
+          p_weekly_points_to_add: number
+        }
+        Returns: undefined
+      }
+      recalculate_leaderboard_ranks: { Args: never; Returns: undefined }
       update_user_streak: { Args: { user_uuid: string }; Returns: undefined }
     }
     Enums: {

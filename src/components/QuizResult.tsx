@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trophy, Target, Clock, Zap, RotateCcw, Home, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Confetti } from '@/components/Confetti';
 import { cn } from '@/lib/utils';
+import { useQuiz } from '@/contexts/QuizContext';
 import type { QuizResult as QuizResultType } from '@/types';
 
 interface QuizResultProps {
@@ -12,6 +14,12 @@ interface QuizResultProps {
 
 export const QuizResult = ({ result, onRetry }: QuizResultProps) => {
   const navigate = useNavigate();
+  const { submitResults } = useQuiz();
+
+  // Submit results to database when component mounts
+  useEffect(() => {
+    submitResults();
+  }, [submitResults]);
 
   const getGrade = () => {
     if (result.accuracy >= 90) return { label: 'A+', color: 'text-success', bg: 'from-success/20 to-success/5', message: 'Outstanding!' };

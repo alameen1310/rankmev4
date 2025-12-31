@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { Question, QuizResult, Subject } from '@/types';
-import { getQuestionsBySubject } from '@/data/mockData';
+import { getQuestionsBySubjectSlug, submitQuizSession } from '@/services/quiz';
+import { getQuestionsBySubject as getMockQuestions } from '@/data/mockData';
+import { useAuth } from './AuthContext';
+import { toast } from 'sonner';
 
 interface QuizState {
   questions: Question[];
@@ -9,16 +12,18 @@ interface QuizState {
   times: number[];
   isActive: boolean;
   isComplete: boolean;
+  isLoading: boolean;
   subject: Subject | null;
 }
 
 interface QuizContextType {
   state: QuizState;
-  startQuiz: (subject: Subject) => void;
+  startQuiz: (subject: Subject) => Promise<void>;
   answerQuestion: (optionIndex: number, timeSpent: number) => void;
   nextQuestion: () => void;
   getResult: () => QuizResult;
   resetQuiz: () => void;
+  submitResults: () => Promise<void>;
   currentQuestion: Question | null;
   progress: number;
 }
@@ -30,25 +35,73 @@ const initialState: QuizState = {
   times: [],
   isActive: false,
   isComplete: false,
+  isLoading: false,
   subject: null,
 };
 
 const QuizContext = createContext<QuizContextType | undefined>(undefined);
 
+// Map subject ID to display name
+const subjectNameMap: Record<Subject, string> = {
+  'mathematics': 'Mathematics',
+  'physics': 'Physics',
+  'chemistry': 'Chemistry',
+  'biology': 'Biology',
+  'english': 'English',
+  'history': 'History',
+  'geography': 'Geography',
+  'computer-science': 'Computer Science',
+};
+
 export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<QuizState>(initialState);
+  const { user, refreshProfile } = useAuth();
 
-  const startQuiz = useCallback((subject: Subject) => {
-    const questions = getQuestionsBySubject(subject);
-    setState({
-      questions,
-      currentIndex: 0,
-      answers: new Array(questions.length).fill(null),
-      times: new Array(questions.length).fill(0),
-      isActive: true,
-      isComplete: false,
-      subject,
-    });
+  const startQuiz = useCallback(async (subject: Subject) => {
+    setState(prev => ({ ...prev, isLoading: true }));
+    
+    try {
+      // Try to fetch from database first
+      let questions = await getQuestionsBySubjectSlug(subject, 10);
+      
+      // Fallback to mock data if no DB questions
+      if (questions.length === 0) {
+        console.log('No DB questions found, using mock data');
+        questions = getMockQuestions(subject);
+      }
+      
+      if (questions.length === 0) {
+        toast.error('No questions available for this subject');
+        setState(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
+      
+      setState({
+        questions,
+        currentIndex: 0,
+        answers: new Array(questions.length).fill(null),
+        times: new Array(questions.length).fill(0),
+        isActive: true,
+        isComplete: false,
+        isLoading: false,
+        subject,
+      });
+    } catch (error) {
+      console.error('Error starting quiz:', error);
+      
+      // Fallback to mock data on error
+      const questions = getMockQuestions(subject);
+      setState({
+        questions,
+        currentIndex: 0,
+        answers: new Array(questions.length).fill(null),
+        times: new Array(questions.length).fill(0),
+        isActive: true,
+        isComplete: false,
+        isLoading: false,
+        subject,
+      });
+    }
   }, []);
 
   const answerQuestion = useCallback((optionIndex: number, timeSpent: number) => {
@@ -80,9 +133,12 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let currentStreak = 0;
 
     questions.forEach((q, i) => {
-      if (answers[i] === q.correctIndex) {
+      const isCorrect = answers[i] === q.correctIndex;
+      if (isCorrect) {
         correctAnswers++;
-        const timeBonus = Math.max(0, Math.floor((30 - times[i]) / 3) * 10);
+        // Time bonus: faster answers get more points (max 50% bonus)
+        const timeInSeconds = times[i];
+        const timeBonus = Math.max(0, Math.floor((30 - timeInSeconds) / 30 * 50));
         totalPoints += q.points + timeBonus;
         currentStreak++;
         perfectStreak = Math.max(perfectStreak, currentStreak);
@@ -101,6 +157,49 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [state]);
 
+  const submitResults = useCallback(async () => {
+    if (!user || !state.subject || state.questions.length === 0) {
+      console.log('Cannot submit: missing user, subject, or questions');
+      return;
+    }
+
+    const { questions, answers, times } = state;
+    
+    // Build answer array for submission
+    const submissionAnswers = questions.map((q, i) => {
+      const selectedAnswer = answers[i] ?? 0;
+      const isCorrect = selectedAnswer === q.correctIndex;
+      const timeInSeconds = times[i] || 0;
+      const timeBonus = isCorrect ? Math.max(0, Math.floor((30 - timeInSeconds) / 30 * 50)) : 0;
+      const pointsEarned = isCorrect ? q.points + timeBonus : 0;
+
+      return {
+        questionId: q.id,
+        selectedAnswer,
+        timeSpent: timeInSeconds * 1000, // Convert to ms for storage
+        isCorrect,
+        pointsEarned,
+      };
+    });
+
+    try {
+      const result = await submitQuizSession(
+        user.id,
+        subjectNameMap[state.subject],
+        submissionAnswers
+      );
+      
+      console.log('Quiz submitted successfully:', result);
+      toast.success(`+${result.score} points earned!`);
+      
+      // Refresh the user profile to update points in UI
+      await refreshProfile();
+    } catch (error) {
+      console.error('Error submitting quiz results:', error);
+      toast.error('Failed to save your results. Please try again.');
+    }
+  }, [user, state, refreshProfile]);
+
   const resetQuiz = useCallback(() => {
     setState(initialState);
   }, []);
@@ -118,6 +217,7 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nextQuestion,
       getResult,
       resetQuiz,
+      submitResults,
       currentQuestion,
       progress,
     }}>

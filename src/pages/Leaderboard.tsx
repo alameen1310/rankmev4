@@ -6,10 +6,10 @@ import { LeaderboardRow } from '@/components/LeaderboardRow';
 import { LeaderboardSkeleton } from '@/components/Skeleton';
 import { BottomSheet } from '@/components/BottomSheet';
 import { useAuth } from '@/contexts/AuthContext';
-import { getGlobalLeaderboard, getCountryLeaderboard, getUserRank, type LeaderboardEntryWithProfile } from '@/services/leaderboard';
+import { getGlobalLeaderboard, getCountryLeaderboard, getUserRank } from '@/services/leaderboard';
 import { getSubjects, type DbSubject } from '@/services/quiz';
 import { cn } from '@/lib/utils';
-import type { LeaderboardTab, LeaderboardEntry, Tier } from '@/types';
+import type { LeaderboardTab, LeaderboardEntry } from '@/types';
 
 const tabs: { id: LeaderboardTab; label: string }[] = [
   { id: 'global', label: 'Global' },
@@ -27,30 +27,6 @@ const tierFilters = [
   { id: 'silver', label: 'Silver', icon: '🥈' },
   { id: 'bronze', label: 'Bronze', icon: '🥉' },
 ];
-
-// Convert DB profile to leaderboard entry format
-function toLeaderboardEntry(entry: LeaderboardEntryWithProfile): LeaderboardEntry {
-  return {
-    id: entry.profile.id,
-    rank: entry.rank,
-    username: entry.profile.display_name || entry.profile.username || 'Anonymous',
-    avatar: entry.profile.avatar_url || undefined,
-    points: entry.points,
-    tier: (entry.profile.tier as Tier) || 'bronze',
-    country: entry.profile.country || 'US',
-    countryFlag: getCountryFlag(entry.profile.country || 'US'),
-    change: 'same' as const,
-  };
-}
-
-function getCountryFlag(country: string): string {
-  const flags: Record<string, string> = {
-    'US': '🇺🇸', 'NG': '🇳🇬', 'GB': '🇬🇧', 'GH': '🇬🇭', 
-    'KE': '🇰🇪', 'ZA': '🇿🇦', 'IN': '🇮🇳', 'CA': '🇨🇦',
-    'AU': '🇦🇺', 'DE': '🇩🇪',
-  };
-  return flags[country] || '🌍';
-}
 
 export const Leaderboard = () => {
   const { profile, user } = useAuth();
@@ -75,7 +51,7 @@ export const Leaderboard = () => {
           getGlobalLeaderboard(100),
           getSubjects(),
         ]);
-        setLeaderboardData(data.map(toLeaderboardEntry));
+        setLeaderboardData(data);
         setSubjects(subjectsData);
         
         if (user) {
@@ -137,7 +113,7 @@ export const Leaderboard = () => {
     setIsRefreshing(true);
     try {
       const data = await getGlobalLeaderboard(100);
-      setLeaderboardData(data.map(toLeaderboardEntry));
+      setLeaderboardData(data);
     } catch (error) {
       console.error('Error refreshing:', error);
     }

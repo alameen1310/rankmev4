@@ -14,6 +14,9 @@ import { Dashboard } from "./pages/Dashboard";
 import { Leaderboard } from "./pages/Leaderboard";
 import { Quiz } from "./pages/Quiz";
 import { Profile } from "./pages/Profile";
+import { PvPLobby } from "./pages/PvPLobby";
+import { BattleScreen } from "./pages/BattleScreen";
+import { Friends } from "./pages/Friends";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +40,9 @@ const App = () => (
                   <Route path="/quiz" element={<Quiz />} />
                   <Route path="/quiz/:subject" element={<Quiz />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/pvp" element={<PvPLobby />} />
+                  <Route path="/battle/:battleId" element={<BattleScreen />} />
+                  <Route path="/friends" element={<Friends />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Routes>

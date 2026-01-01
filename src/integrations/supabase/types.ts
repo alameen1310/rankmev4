@@ -88,29 +88,137 @@ export type Database = {
         }
         Relationships: []
       }
+      battle_answers: {
+        Row: {
+          answered_at: string | null
+          battle_id: string | null
+          id: string
+          is_correct: boolean | null
+          points_earned: number | null
+          question_id: number | null
+          selected_answer: string | null
+          time_spent: number | null
+          user_id: string | null
+        }
+        Insert: {
+          answered_at?: string | null
+          battle_id?: string | null
+          id?: string
+          is_correct?: boolean | null
+          points_earned?: number | null
+          question_id?: number | null
+          selected_answer?: string | null
+          time_spent?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          answered_at?: string | null
+          battle_id?: string | null
+          id?: string
+          is_correct?: boolean | null
+          points_earned?: number | null
+          question_id?: number | null
+          selected_answer?: string | null
+          time_spent?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_answers_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "battles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_answers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_live_state: {
+        Row: {
+          battle_id: string
+          current_question: number | null
+          question_start_time: string | null
+          status_data: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          battle_id: string
+          current_question?: number | null
+          question_start_time?: string | null
+          status_data?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          battle_id?: string
+          current_question?: number | null
+          question_start_time?: string | null
+          status_data?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_live_state_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: true
+            referencedRelation: "battles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       battle_participants: {
         Row: {
           answers_correct: number | null
           battle_id: string
+          correct_answers: number | null
+          finished_at: string | null
+          id: string | null
           joined_at: string | null
           ready: boolean | null
+          ready_at: string | null
           score: number | null
+          status: string | null
+          total_time: number | null
           user_id: string
         }
         Insert: {
           answers_correct?: number | null
           battle_id: string
+          correct_answers?: number | null
+          finished_at?: string | null
+          id?: string | null
           joined_at?: string | null
           ready?: boolean | null
+          ready_at?: string | null
           score?: number | null
+          status?: string | null
+          total_time?: number | null
           user_id: string
         }
         Update: {
           answers_correct?: number | null
           battle_id?: string
+          correct_answers?: number | null
+          finished_at?: string | null
+          id?: string | null
           joined_at?: string | null
           ready?: boolean | null
+          ready_at?: string | null
           score?: number | null
+          status?: string | null
+          total_time?: number | null
           user_id?: string
         }
         Relationships: [
@@ -170,9 +278,14 @@ export type Database = {
           created_by: string | null
           id: string
           is_private: boolean | null
+          mode: string | null
+          room_code: string | null
           started_at: string | null
           status: string | null
           subject_id: number | null
+          time_per_question: number | null
+          total_questions: number | null
+          updated_at: string | null
           winner_id: string | null
         }
         Insert: {
@@ -181,9 +294,14 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_private?: boolean | null
+          mode?: string | null
+          room_code?: string | null
           started_at?: string | null
           status?: string | null
           subject_id?: number | null
+          time_per_question?: number | null
+          total_questions?: number | null
+          updated_at?: string | null
           winner_id?: string | null
         }
         Update: {
@@ -192,9 +310,14 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_private?: boolean | null
+          mode?: string | null
+          room_code?: string | null
           started_at?: string | null
           status?: string | null
           subject_id?: number | null
+          time_per_question?: number | null
+          total_questions?: number | null
+          updated_at?: string | null
           winner_id?: string | null
         }
         Relationships: [
@@ -220,6 +343,111 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      chat_messages: {
+        Row: {
+          created_at: string | null
+          data: Json | null
+          id: string
+          message_text: string
+          message_type: string | null
+          read_by: string[] | null
+          room_id: string | null
+          sender_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          message_text: string
+          message_type?: string | null
+          read_by?: string[] | null
+          room_id?: string | null
+          sender_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          message_text?: string
+          message_type?: string | null
+          read_by?: string[] | null
+          room_id?: string | null
+          sender_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_room_participants: {
+        Row: {
+          joined_at: string | null
+          last_read_at: string | null
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          joined_at?: string | null
+          last_read_at?: string | null
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          joined_at?: string | null
+          last_read_at?: string | null
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_room_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_room_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_rooms: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string | null
+          type: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          type?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          type?: string | null
+        }
+        Relationships: []
       }
       daily_streaks: {
         Row: {
@@ -829,6 +1057,10 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: undefined
       }
+      get_or_create_direct_chat: {
+        Args: { user1_id: string; user2_id: string }
+        Returns: string
+      }
       get_user_rank: {
         Args: { user_uuid: string }
         Returns: {
@@ -847,6 +1079,16 @@ export type Database = {
         Returns: undefined
       }
       recalculate_leaderboard_ranks: { Args: never; Returns: undefined }
+      update_battle_score: {
+        Args: {
+          battle_id_param: string
+          correct_to_add: number
+          points_to_add: number
+          time_to_add: number
+          user_id_param: string
+        }
+        Returns: undefined
+      }
       update_user_streak: { Args: { user_uuid: string }; Returns: undefined }
     }
     Enums: {

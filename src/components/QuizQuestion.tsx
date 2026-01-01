@@ -53,7 +53,7 @@ export const QuizQuestion = ({
 
     setTimeout(() => {
       onAnswer(optionIndex, timeSpent);
-    }, 1500);
+    }, 1400); // Reduced from 1500ms to 1400ms for faster pacing
   }, [selectedOption, timeLimit, timeLeft, onAnswer]);
 
   const getOptionClassName = (index: number) => {

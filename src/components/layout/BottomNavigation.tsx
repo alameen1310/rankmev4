@@ -1,12 +1,13 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Trophy, Zap, User } from 'lucide-react';
+import { Home, Trophy, Zap, Swords, Users, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/dashboard', icon: Home, label: 'Home' },
-  { to: '/leaderboard', icon: Trophy, label: 'Ranks' },
+  { to: '/pvp', icon: Swords, label: 'PvP' },
   { to: '/quiz', icon: Zap, label: 'Quiz' },
-  { to: '/profile', icon: User, label: 'Profile' },
+  { to: '/friends', icon: Users, label: 'Friends' },
+  { to: '/leaderboard', icon: Trophy, label: 'Ranks' },
 ];
 
 export const BottomNavigation = () => {

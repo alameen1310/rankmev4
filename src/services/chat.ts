@@ -190,14 +190,6 @@ export async function sendMessage(
   
   return message as ChatMessage;
 }
-  
-  if (error) {
-    console.error('Error sending message:', error);
-    throw error;
-  }
-  
-  return message as ChatMessage;
-}
 
 export async function markRoomAsRead(roomId: string, userId: string): Promise<void> {
   const { error } = await supabase

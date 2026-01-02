@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { createBattle, getOpenBattles, joinBattle, type Battle } from '@/services/battles';
+import { createBattle, getOpenBattles, joinBattle, joinBattleByRoomCode, type Battle } from '@/services/battles';
 import { getSubjects, type DbSubject } from '@/services/quiz';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -83,6 +83,30 @@ export function PvPLobby() {
       navigate(`/battle/${battleId}`);
     } catch (error) {
       console.error('Failed to join battle:', error);
+      toast.error('Failed to join battle');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleJoinByCode = async () => {
+    if (!roomCode.trim() || !user) {
+      toast.error('Please enter a room code');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await joinBattleByRoomCode(roomCode.toUpperCase(), user.id);
+      
+      if (result.success && result.battleId) {
+        toast.success(result.message);
+        navigate(`/battle/${result.battleId}`);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Failed to join by code:', error);
       toast.error('Failed to join battle');
     } finally {
       setIsLoading(false);
@@ -233,20 +257,27 @@ export function PvPLobby() {
               <h3 className="font-semibold mb-4">Enter Room Code</h3>
               <Input
                 value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                placeholder="Enter code..."
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                placeholder="E.g., A1B2C3"
                 className="text-center text-xl font-mono tracking-widest h-14"
                 maxLength={6}
               />
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                {roomCode.length}/6 characters
+              </p>
               <Button
-                onClick={() => {
-                  // TODO: Implement join by code
-                  toast.error('Room code joining coming soon!');
-                }}
+                onClick={handleJoinByCode}
                 className="w-full mt-4"
-                disabled={roomCode.length < 6}
+                disabled={roomCode.length < 6 || isLoading}
               >
-                Join by Code
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Joining...
+                  </>
+                ) : (
+                  'Join by Code'
+                )}
               </Button>
             </Card>
 

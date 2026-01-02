@@ -202,9 +202,9 @@ export function BattleScreen() {
   }, [selectedAnswer, battleId, user, timeLeft, questions, currentQuestionIndex, battleComplete]);
 
   const copyRoomCode = () => {
-    // For now, copy battle ID
-    navigator.clipboard.writeText(battleId || '');
-    toast.success('Battle ID copied!');
+    const code = battle?.room_code || battleId || '';
+    navigator.clipboard.writeText(code);
+    toast.success('Room code copied!');
   };
 
   if (isLoading) {
@@ -240,9 +240,11 @@ export function BattleScreen() {
             </p>
             
             <div className="bg-muted rounded-lg p-4 mb-6">
-              <p className="text-xs text-muted-foreground mb-2">Battle ID</p>
+              <p className="text-xs text-muted-foreground mb-2">Room Code</p>
               <div className="flex items-center justify-center gap-2">
-                <code className="text-lg font-mono">{battleId?.slice(0, 8)}...</code>
+                <code className="text-2xl font-mono font-bold tracking-widest">
+                  {battle.room_code || battleId?.slice(0, 6).toUpperCase()}
+                </code>
                 <Button size="sm" variant="ghost" onClick={copyRoomCode}>
                   <Copy className="w-4 h-4" />
                 </Button>

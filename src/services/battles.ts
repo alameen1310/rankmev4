@@ -18,6 +18,7 @@ export interface Battle {
   subject_id: number | null;
   status: 'waiting' | 'active' | 'completed' | 'cancelled';
   is_private: boolean;
+  room_code: string | null;
   created_by: string | null;
   winner_id: string | null;
   created_at: string;
@@ -29,6 +30,16 @@ export interface Battle {
 export interface BattleWithQuestions extends Battle {
   questions: Question[];
   currentQuestionIndex: number;
+}
+
+// Generate a random room code
+function generateRoomCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
 }
 
 export async function createBattle(
@@ -54,6 +65,8 @@ export async function createBattle(
     .eq('name', subjectNameMap[subjectSlug])
     .maybeSingle();
   
+  const roomCode = generateRoomCode();
+  
   // Create the battle
   const { data: battle, error } = await supabase
     .from('battles')
@@ -62,6 +75,7 @@ export async function createBattle(
       status: 'waiting',
       is_private: isPrivate,
       created_by: userId,
+      room_code: roomCode,
     })
     .select()
     .single();
@@ -312,6 +326,69 @@ export async function getOpenBattles(limit: number = 10): Promise<Battle[]> {
     ...b,
     participants: [],
   })) as Battle[];
+}
+
+export async function joinBattleByRoomCode(
+  roomCode: string, 
+  userId: string
+): Promise<{ success: boolean; battleId?: string; message: string }> {
+  try {
+    // Find battle by room code
+    const { data: battle, error: findError } = await supabase
+      .from('battles')
+      .select('*')
+      .eq('room_code', roomCode.toUpperCase())
+      .eq('status', 'waiting')
+      .maybeSingle();
+    
+    if (findError) {
+      console.error('Error finding battle:', findError);
+      return { success: false, message: 'Error finding battle' };
+    }
+    
+    if (!battle) {
+      return { success: false, message: 'Battle not found or already started' };
+    }
+    
+    // Check if user is the creator
+    if (battle.created_by === userId) {
+      return { success: false, message: 'You created this battle! Waiting for opponent...' };
+    }
+    
+    // Check if already joined
+    const { data: existing } = await supabase
+      .from('battle_participants')
+      .select('user_id')
+      .eq('battle_id', battle.id)
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (existing) {
+      return { success: false, message: 'You already joined this battle' };
+    }
+    
+    // Get current participant count
+    const { data: participants } = await supabase
+      .from('battle_participants')
+      .select('user_id')
+      .eq('battle_id', battle.id);
+    
+    if (participants && participants.length >= 2) {
+      return { success: false, message: 'Battle is full (2/2 players)' };
+    }
+    
+    // Join the battle
+    await joinBattle(battle.id, userId);
+    
+    return { 
+      success: true, 
+      battleId: battle.id, 
+      message: 'Successfully joined! Starting battle...' 
+    };
+  } catch (error) {
+    console.error('Error joining battle by code:', error);
+    return { success: false, message: 'Failed to join battle' };
+  }
 }
 
 export function subscribeToBattle(

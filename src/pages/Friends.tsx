@@ -61,12 +61,22 @@ export function Friends() {
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatChannelRef = useRef<ReturnType<typeof subscribeToChatRoom> | null>(null);
 
   useEffect(() => {
     if (user) {
       loadData();
     }
   }, [user]);
+
+  useEffect(() => {
+    return () => {
+      if (chatChannelRef.current) {
+        supabase.removeChannel(chatChannelRef.current);
+        chatChannelRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -137,35 +147,47 @@ export function Friends() {
 
   const openChat = async (friend: FriendProfile) => {
     if (!user) return;
-    
+
     try {
+      // Clean up any previous subscription first
+      if (chatChannelRef.current) {
+        supabase.removeChannel(chatChannelRef.current);
+        chatChannelRef.current = null;
+      }
+
       const roomId = await getOrCreateDirectChat(user.id, friend.id);
       setChatRoomId(roomId);
       setActiveChatFriend(friend);
-      
+
       // Load messages
       const chatMessages = await getChatMessages(roomId);
       setMessages(chatMessages);
-      
+
       // Mark as read
       await markRoomAsRead(roomId, user.id);
-      
+
       // Subscribe to new messages
       const channel = subscribeToChatRoom(roomId, (newMsg) => {
-        setMessages(prev => [...prev, newMsg]);
+        setMessages(prev => (prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]));
         if (newMsg.sender_id !== user.id) {
           markRoomAsRead(roomId, user.id);
         }
       });
-      
-      return () => supabase.removeChannel(channel);
+
+      chatChannelRef.current = channel;
     } catch (error) {
       console.error('Error opening chat:', error);
-      toast.error('Failed to open chat');
+      const details = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to open chat: ${details}`);
     }
   };
 
   const closeChat = () => {
+    if (chatChannelRef.current) {
+      supabase.removeChannel(chatChannelRef.current);
+      chatChannelRef.current = null;
+    }
+
     setActiveChatFriend(null);
     setChatRoomId(null);
     setMessages([]);
@@ -174,14 +196,15 @@ export function Friends() {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !chatRoomId || !user || isSending) return;
-    
+
     setIsSending(true);
     try {
       await sendMessage(chatRoomId, user.id, newMessage.trim());
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Failed to send message');
+      const details = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to send message: ${details}`);
     } finally {
       setIsSending(false);
     }

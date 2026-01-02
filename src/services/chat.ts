@@ -171,7 +171,9 @@ export async function sendMessage(
   messageType: 'text' | 'image' | 'battle_invite' | 'system' = 'text',
   data: Record<string, unknown> = {}
 ): Promise<ChatMessage> {
-  const { data: message, error } = await supabase
+  console.log('[chat] sendMessage()', { roomId, senderId, messageType, messageLength: messageText.length });
+
+  const { error } = await supabase
     .from('chat_messages')
     .insert({
       room_id: roomId,
@@ -179,16 +181,23 @@ export async function sendMessage(
       message_text: messageText,
       message_type: messageType,
       data: data as any,
-    })
-    .select()
-    .single();
-  
+    });
+
   if (error) {
-    console.error('Error sending message:', error);
-    throw error;
+    console.error('[chat] Error sending message:', error);
+    throw new Error(error.message);
   }
-  
-  return message as ChatMessage;
+
+  // We rely on realtime subscription to receive the authoritative inserted row (id/created_at).
+  return {
+    id: `temp-${Date.now()}`,
+    room_id: roomId,
+    sender_id: senderId,
+    message_text: messageText,
+    message_type: messageType,
+    data,
+    created_at: new Date().toISOString(),
+  };
 }
 
 export async function markRoomAsRead(roomId: string, userId: string): Promise<void> {

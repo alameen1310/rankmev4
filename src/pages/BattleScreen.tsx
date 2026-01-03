@@ -105,6 +105,8 @@ export function BattleScreen() {
   const loadQuestions = async () => {
     if (!battleId) return;
     
+    console.log('[BattleScreen] Loading questions for battle:', battleId);
+    
     const { data, error } = await supabase
       .from('battle_questions')
       .select(`
@@ -124,11 +126,26 @@ export function BattleScreen() {
       .eq('battle_id', battleId)
       .order('order_index');
     
-    if (!error && data) {
+    if (error) {
+      console.error('[BattleScreen] Error loading questions:', error);
+    }
+    
+    if (data && data.length > 0) {
       const formattedQuestions = data
         .map(bq => bq.questions as unknown as BattleQuestion)
         .filter(Boolean);
+      console.log('[BattleScreen] Loaded', formattedQuestions.length, 'questions');
       setQuestions(formattedQuestions);
+    } else {
+      console.log('[BattleScreen] No battle_questions found, using fallback');
+      // Use fallback questions
+      setQuestions([
+        { id: 1, question_text: 'What is 2 + 2?', option_a: '3', option_b: '4', option_c: '5', option_d: '6', correct_answer: 'B', difficulty: 'easy' },
+        { id: 2, question_text: 'What is the capital of France?', option_a: 'London', option_b: 'Berlin', option_c: 'Paris', option_d: 'Madrid', correct_answer: 'C', difficulty: 'easy' },
+        { id: 3, question_text: 'What is H₂O?', option_a: 'Hydrogen', option_b: 'Oxygen', option_c: 'Water', option_d: 'Carbon', correct_answer: 'C', difficulty: 'easy' },
+        { id: 4, question_text: 'What is 10 × 5?', option_a: '40', option_b: '50', option_c: '60', option_d: '55', correct_answer: 'B', difficulty: 'easy' },
+        { id: 5, question_text: 'What is the largest planet?', option_a: 'Earth', option_b: 'Mars', option_c: 'Jupiter', option_d: 'Saturn', correct_answer: 'C', difficulty: 'medium' },
+      ]);
     }
   };
 

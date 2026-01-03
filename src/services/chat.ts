@@ -32,16 +32,23 @@ export interface ChatParticipant {
 }
 
 export async function getOrCreateDirectChat(userId1: string, userId2: string): Promise<string> {
+  console.log('[chat] getOrCreateDirectChat()', { userId1, userId2 });
+  
   const { data, error } = await supabase.rpc('get_or_create_direct_chat', {
     user1_id: userId1,
     user2_id: userId2,
   });
   
   if (error) {
-    console.error('Error getting/creating direct chat:', error);
-    throw error;
+    console.error('[chat] Error getting/creating direct chat:', error);
+    throw new Error(error.message || 'Failed to open chat');
   }
   
+  if (!data) {
+    throw new Error('Failed to create chat room');
+  }
+  
+  console.log('[chat] Got room ID:', data);
   return data;
 }
 
@@ -130,6 +137,8 @@ export async function getChatMessages(
   limit = 50, 
   before?: string
 ): Promise<ChatMessage[]> {
+  console.log('[chat] getChatMessages()', { roomId, limit });
+  
   let query = supabase
     .from('chat_messages')
     .select('*')
@@ -144,12 +153,17 @@ export async function getChatMessages(
   const { data, error } = await query;
   
   if (error) {
-    console.error('Error fetching chat messages:', error);
-    throw error;
+    console.error('[chat] Error fetching chat messages:', error);
+    throw new Error(error.message || 'Failed to load messages');
   }
   
   // Get sender profiles
   const senderIds = [...new Set((data || []).map(m => m.sender_id))];
+  
+  if (senderIds.length === 0) {
+    return [];
+  }
+  
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, username, avatar_url')
@@ -173,30 +187,37 @@ export async function sendMessage(
 ): Promise<ChatMessage> {
   console.log('[chat] sendMessage()', { roomId, senderId, messageType, messageLength: messageText.length });
 
-  const { error } = await supabase
+  if (!messageText.trim()) {
+    throw new Error('Message cannot be empty');
+  }
+
+  const { data: insertedMessage, error } = await supabase
     .from('chat_messages')
     .insert({
       room_id: roomId,
       sender_id: senderId,
-      message_text: messageText,
+      message_text: messageText.trim(),
       message_type: messageType,
       data: data as any,
-    });
+    })
+    .select()
+    .single();
 
   if (error) {
     console.error('[chat] Error sending message:', error);
-    throw new Error(error.message);
+    throw new Error(error.message || 'Failed to send message');
   }
 
-  // We rely on realtime subscription to receive the authoritative inserted row (id/created_at).
+  console.log('[chat] Message sent successfully:', insertedMessage.id);
+  
   return {
-    id: `temp-${Date.now()}`,
-    room_id: roomId,
-    sender_id: senderId,
-    message_text: messageText,
-    message_type: messageType,
-    data,
-    created_at: new Date().toISOString(),
+    id: insertedMessage.id,
+    room_id: insertedMessage.room_id,
+    sender_id: insertedMessage.sender_id,
+    message_text: insertedMessage.message_text,
+    message_type: insertedMessage.message_type as ChatMessage['message_type'],
+    data: (insertedMessage.data as Record<string, unknown>) || {},
+    created_at: insertedMessage.created_at,
   };
 }
 
@@ -216,6 +237,8 @@ export function subscribeToChatRoom(
   roomId: string,
   onNewMessage: (message: ChatMessage) => void
 ): RealtimeChannel {
+  console.log('[chat] Subscribing to room:', roomId);
+  
   const channel = supabase.channel(`chat:${roomId}`);
   
   channel
@@ -228,7 +251,8 @@ export function subscribeToChatRoom(
         filter: `room_id=eq.${roomId}`,
       },
       async (payload) => {
-        const msg = payload.new as ChatMessage;
+        console.log('[chat] New message via realtime:', payload.new);
+        const msg = payload.new as any;
         
         // Get sender profile
         const { data: profile } = await supabase
@@ -241,10 +265,12 @@ export function subscribeToChatRoom(
           ...msg,
           sender_username: profile?.username || 'Unknown',
           sender_avatar: profile?.avatar_url || undefined,
-        });
+        } as ChatMessage);
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      console.log('[chat] Subscription status:', status);
+    });
   
   return channel;
 }

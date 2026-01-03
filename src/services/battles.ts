@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { Question, Subject } from '@/types';
-import { getQuestionsBySubjectSlug } from './quiz';
 
 export interface BattleParticipant {
   user_id: string;
@@ -40,6 +39,98 @@ function generateRoomCode(): string {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
+}
+
+// Fallback questions if database has none for a subject
+const FALLBACK_QUESTIONS = [
+  { question_text: 'What is 2 + 2?', option_a: '3', option_b: '4', option_c: '5', option_d: '6', correct_answer: 'B', difficulty: 'easy', points_value: 100 },
+  { question_text: 'What is the capital of France?', option_a: 'London', option_b: 'Berlin', option_c: 'Paris', option_d: 'Madrid', correct_answer: 'C', difficulty: 'easy', points_value: 100 },
+  { question_text: 'What is H₂O?', option_a: 'Hydrogen', option_b: 'Oxygen', option_c: 'Water', option_d: 'Carbon', correct_answer: 'C', difficulty: 'easy', points_value: 100 },
+  { question_text: 'What is 10 × 5?', option_a: '40', option_b: '50', option_c: '60', option_d: '55', correct_answer: 'B', difficulty: 'easy', points_value: 100 },
+  { question_text: 'What is the largest planet?', option_a: 'Earth', option_b: 'Mars', option_c: 'Jupiter', option_d: 'Saturn', correct_answer: 'C', difficulty: 'medium', points_value: 150 },
+];
+
+// Generate questions for a battle by subject ID
+export async function generateBattleQuestions(
+  battleId: string,
+  subjectId: number | null,
+  count: number = 10
+): Promise<number> {
+  try {
+    console.log(`[Battle] Generating ${count} questions for battle ${battleId}, subject ${subjectId}`);
+    
+    // Fetch questions from database
+    let query = supabase.from('questions').select('id');
+    
+    if (subjectId) {
+      query = query.eq('subject_id', subjectId);
+    }
+    
+    const { data: questions, error } = await query.limit(count * 2); // Get more to shuffle
+    
+    if (error) {
+      console.error('[Battle] Error fetching questions:', error);
+      return 0;
+    }
+    
+    if (!questions || questions.length === 0) {
+      console.log('[Battle] No questions found for subject, trying all subjects');
+      // Fallback: get questions from any subject
+      const { data: fallbackQuestions } = await supabase
+        .from('questions')
+        .select('id')
+        .limit(count);
+      
+      if (!fallbackQuestions || fallbackQuestions.length === 0) {
+        console.log('[Battle] No questions in database at all');
+        return 0;
+      }
+      
+      // Use fallback questions
+      const shuffled = fallbackQuestions.sort(() => Math.random() - 0.5).slice(0, count);
+      const battleQuestions = shuffled.map((q, index) => ({
+        battle_id: battleId,
+        question_id: q.id,
+        order_index: index,
+      }));
+      
+      const { error: insertError } = await supabase
+        .from('battle_questions')
+        .insert(battleQuestions);
+      
+      if (insertError) {
+        console.error('[Battle] Error inserting battle questions:', insertError);
+        return 0;
+      }
+      
+      console.log(`[Battle] Inserted ${battleQuestions.length} fallback questions`);
+      return battleQuestions.length;
+    }
+    
+    // Shuffle and take count questions
+    const shuffled = questions.sort(() => Math.random() - 0.5).slice(0, count);
+    
+    const battleQuestions = shuffled.map((q, index) => ({
+      battle_id: battleId,
+      question_id: q.id,
+      order_index: index,
+    }));
+    
+    const { error: insertError } = await supabase
+      .from('battle_questions')
+      .insert(battleQuestions);
+    
+    if (insertError) {
+      console.error('[Battle] Error inserting battle questions:', insertError);
+      return 0;
+    }
+    
+    console.log(`[Battle] Inserted ${battleQuestions.length} questions for battle`);
+    return battleQuestions.length;
+  } catch (error) {
+    console.error('[Battle] Failed to generate battle questions:', error);
+    return 0;
+  }
 }
 
 export async function createBattle(
@@ -101,18 +192,8 @@ export async function createBattle(
   }
   
   // Pre-generate questions for the battle
-  const questions = await getQuestionsBySubjectSlug(subjectSlug, 10);
-  
-  // Store question IDs in battle_questions table
-  const battleQuestions = questions.map((q, index) => ({
-    battle_id: battle.id,
-    question_id: parseInt(q.id, 10),
-    order_index: index,
-  }));
-  
-  if (battleQuestions.length > 0) {
-    await supabase.from('battle_questions').insert(battleQuestions);
-  }
+  const questionsGenerated = await generateBattleQuestions(battle.id, subject?.id || null, 10);
+  console.log(`[Battle] Created battle ${battle.id} with ${questionsGenerated} questions`);
   
   return {
     ...battle,

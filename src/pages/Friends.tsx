@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -16,6 +16,8 @@ import {
   sendMessage,
   subscribeToMessages,
   markMessagesAsRead,
+  addReaction,
+  removeReaction,
   type ChatMessage
 } from '@/services/chat';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +27,6 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Users, 
   Search, 
@@ -40,8 +41,22 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TierBadge } from '@/components/TierBadge';
+import { ChatMessage as ChatMessageComponent } from '@/components/chat/ChatMessage';
+import { TypingIndicator } from '@/components/chat/TypingIndicator';
+import { EmojiButton } from '@/components/chat/EmojiButton';
+import { GifButton } from '@/components/chat/GifButton';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 
 type Tab = 'friends' | 'requests' | 'search';
+
+interface Gif {
+  id: string;
+  title: string;
+  url: string;
+  preview: string;
+  width: number;
+  height: number;
+}
 
 export function Friends() {
   const { user, profile } = useAuth();
@@ -59,7 +74,16 @@ export function Friends() {
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const chatChannelRef = useRef<ReturnType<typeof subscribeToMessages> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Typing indicator
+  const { isOtherTyping, typingUsername, sendTypingEvent, stopTyping } = useTypingIndicator(
+    user?.id,
+    activeChatFriend?.id,
+    profile?.username || undefined
+  );
 
   useEffect(() => {
     if (user) {
@@ -77,8 +101,14 @@ export function Friends() {
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom();
   }, [chatMessages]);
+
+  const scrollToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
+  }, []);
 
   const loadData = async () => {
     if (!user) return;
@@ -171,6 +201,9 @@ export function Friends() {
       });
 
       chatChannelRef.current = channel;
+      
+      // Focus input after chat opens
+      setTimeout(() => inputRef.current?.focus(), 100);
     } catch (error) {
       console.error('Error opening chat:', error);
       const details = error instanceof Error ? error.message : 'Unknown error';
@@ -183,18 +216,27 @@ export function Friends() {
       supabase.removeChannel(chatChannelRef.current);
       chatChannelRef.current = null;
     }
-
+    stopTyping();
     setActiveChatFriend(null);
     setChatMessages([]);
     setNewMessage('');
   };
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !activeChatFriend || !user || isSending) return;
+  const handleSendMessage = async (messageType: 'text' | 'gif' = 'text', gifUrl?: string) => {
+    if (messageType === 'text' && !newMessage.trim()) return;
+    if (!activeChatFriend || !user || isSending) return;
 
     setIsSending(true);
+    stopTyping();
+    
     try {
-      const result = await sendMessage(user.id, activeChatFriend.id, newMessage.trim());
+      const result = await sendMessage(
+        user.id, 
+        activeChatFriend.id, 
+        messageType === 'text' ? newMessage.trim() : 'GIF',
+        messageType,
+        gifUrl
+      );
       if (!result.success) {
         toast.error(result.error || 'Failed to send message');
       }
@@ -205,7 +247,95 @@ export function Friends() {
       toast.error(`Failed to send message: ${details}`);
     } finally {
       setIsSending(false);
+      inputRef.current?.focus();
     }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    if (e.target.value) {
+      sendTypingEvent(true);
+    } else {
+      stopTyping();
+    }
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setNewMessage(prev => prev + emoji);
+    inputRef.current?.focus();
+  };
+
+  const handleGifSelect = (gif: Gif) => {
+    handleSendMessage('gif', gif.url);
+  };
+
+  const handleAddReaction = async (messageId: string, emoji: string) => {
+    if (!user) return;
+    const result = await addReaction(messageId, user.id, emoji);
+    if (result.success) {
+      // Optimistically update
+      setChatMessages(prev => prev.map(msg => {
+        if (msg.id === messageId) {
+          const existingReaction = msg.reactions?.find(r => r.emoji === emoji);
+          if (existingReaction) {
+            return msg;
+          }
+          return {
+            ...msg,
+            reactions: [...(msg.reactions || []), {
+              id: `temp-${Date.now()}`,
+              message_id: messageId,
+              user_id: user.id,
+              emoji,
+              created_at: new Date().toISOString(),
+            }]
+          };
+        }
+        return msg;
+      }));
+    }
+  };
+
+  const handleRemoveReaction = async (messageId: string, emoji: string) => {
+    if (!user) return;
+    const result = await removeReaction(messageId, user.id, emoji);
+    if (result.success) {
+      // Optimistically update
+      setChatMessages(prev => prev.map(msg => {
+        if (msg.id === messageId) {
+          return {
+            ...msg,
+            reactions: (msg.reactions || []).filter(r => !(r.emoji === emoji && r.user_id === user.id))
+          };
+        }
+        return msg;
+      }));
+    }
+  };
+
+  // Group reactions by emoji for display
+  const getReactionsForMessage = (message: ChatMessage) => {
+    const reactionMap = new Map<string, { count: number; hasReacted: boolean; users: string[] }>();
+    
+    (message.reactions || []).forEach(r => {
+      const existing = reactionMap.get(r.emoji);
+      if (existing) {
+        existing.count++;
+        if (r.user_id === user?.id) existing.hasReacted = true;
+        if (r.user?.username) existing.users.push(r.user.username);
+      } else {
+        reactionMap.set(r.emoji, {
+          count: 1,
+          hasReacted: r.user_id === user?.id,
+          users: r.user?.username ? [r.user.username] : [],
+        });
+      }
+    });
+
+    return Array.from(reactionMap.entries()).map(([emoji, data]) => ({
+      emoji,
+      ...data,
+    }));
   };
 
   if (!user) {
@@ -221,12 +351,12 @@ export function Friends() {
     );
   }
 
-  // Chat View
+  // Chat View - Fixed viewport height layout
   if (activeChatFriend) {
     return (
-      <div className="flex flex-col h-screen bg-background">
-        {/* Chat Header */}
-        <div className="flex items-center gap-3 p-4 border-b bg-card">
+      <div className="fixed inset-0 flex flex-col bg-background">
+        {/* Chat Header - Fixed */}
+        <div className="flex-shrink-0 flex items-center gap-3 p-4 border-b bg-card safe-top">
           <Button variant="ghost" size="icon" onClick={closeChat}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -236,13 +366,16 @@ export function Friends() {
               {activeChatFriend.username?.[0]?.toUpperCase() || '?'}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <p className="font-semibold">
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold truncate">
               {activeChatFriend.display_name || activeChatFriend.username}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
               {activeChatFriend.tier && <TierBadge tier={activeChatFriend.tier as any} size="sm" />}
-            </p>
+              {isOtherTyping && (
+                <span className="text-xs text-muted-foreground animate-pulse">typing...</span>
+              )}
+            </div>
           </div>
           <Button 
             variant="outline" 
@@ -254,59 +387,66 @@ export function Friends() {
           </Button>
         </div>
 
-        {/* Messages */}
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4">
+        {/* Messages - Scrollable, takes remaining space */}
+        <div 
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto overscroll-contain"
+        >
+          <div className="p-4 space-y-3 min-h-full flex flex-col">
             {chatMessages.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No messages yet</p>
-                <p className="text-sm">Start the conversation!</p>
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center py-8 text-muted-foreground">
+                  <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No messages yet</p>
+                  <p className="text-sm">Start the conversation!</p>
+                </div>
               </div>
             ) : (
-              chatMessages.map(msg => (
-                <div
-                  key={msg.id}
-                  className={cn(
-                    "flex",
-                    msg.sender_id === user.id ? "justify-end" : "justify-start"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "max-w-[75%] rounded-2xl px-4 py-2",
-                      msg.sender_id === user.id
-                        ? "bg-primary text-primary-foreground rounded-br-md"
-                        : "bg-muted rounded-bl-md"
-                    )}
-                  >
-                    <p className="text-sm">{msg.message}</p>
-                    <p className={cn(
-                      "text-[10px] mt-1",
-                      msg.sender_id === user.id ? "text-primary-foreground/70" : "text-muted-foreground"
-                    )}>
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-              ))
+              <>
+                <div className="flex-1" />
+                {chatMessages.map(msg => (
+                  <ChatMessageComponent
+                    key={msg.id}
+                    id={msg.id}
+                    message={msg.message}
+                    messageType={msg.message_type}
+                    gifUrl={msg.gif_url}
+                    isOwn={msg.sender_id === user.id}
+                    timestamp={msg.created_at}
+                    status={msg.status}
+                    reactions={getReactionsForMessage(msg)}
+                    onAddReaction={handleAddReaction}
+                    onRemoveReaction={handleRemoveReaction}
+                  />
+                ))}
+              </>
             )}
             <div ref={messagesEndRef} />
           </div>
-        </ScrollArea>
+        </div>
 
-        {/* Message Input */}
-        <div className="p-4 border-t bg-card">
-          <div className="flex gap-2">
+        {/* Typing Indicator */}
+        {isOtherTyping && (
+          <div className="flex-shrink-0 border-t bg-card/50">
+            <TypingIndicator username={typingUsername || activeChatFriend.username || 'User'} />
+          </div>
+        )}
+
+        {/* Message Input - Fixed at bottom */}
+        <div className="flex-shrink-0 p-4 border-t bg-card safe-bottom">
+          <div className="flex items-center gap-2">
+            <EmojiButton onEmojiSelect={handleEmojiSelect} />
+            <GifButton onGifSelect={handleGifSelect} />
             <Input
+              ref={inputRef}
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={handleInputChange}
               placeholder="Type a message..."
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
               className="flex-1"
             />
             <Button 
-              onClick={handleSendMessage} 
+              onClick={() => handleSendMessage()} 
               disabled={!newMessage.trim() || isSending}
               size="icon"
             >
@@ -491,27 +631,27 @@ export function Friends() {
             </div>
 
             <div className="space-y-3">
-              {searchResults.map(user => (
-                <Card key={user.id} className="p-4">
+              {searchResults.map(searchUser => (
+                <Card key={searchUser.id} className="p-4">
                   <div className="flex items-center gap-3">
                     <Avatar className="w-12 h-12">
-                      <AvatarImage src={user.avatar_url || undefined} />
+                      <AvatarImage src={searchUser.avatar_url || undefined} />
                       <AvatarFallback>
-                        {user.username?.[0]?.toUpperCase() || '?'}
+                        {searchUser.username?.[0]?.toUpperCase() || '?'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold truncate">
-                        {user.display_name || user.username}
+                        {searchUser.display_name || searchUser.username}
                       </p>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        {user.tier && <TierBadge tier={user.tier as any} size="sm" />}
-                        <span>{user.total_points?.toLocaleString() || 0} pts</span>
+                        {searchUser.tier && <TierBadge tier={searchUser.tier as any} size="sm" />}
                       </div>
                     </div>
                     <Button 
+                      variant="default" 
                       size="sm"
-                      onClick={() => handleSendRequest(user.id)}
+                      onClick={() => handleSendRequest(searchUser.id)}
                     >
                       <UserPlus className="w-4 h-4 mr-1" />
                       Add
@@ -519,14 +659,6 @@ export function Friends() {
                   </div>
                 </Card>
               ))}
-
-              {searchQuery && searchResults.length === 0 && !isLoading && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No users found</p>
-                  <p className="text-sm">Try a different search</p>
-                </div>
-              )}
             </div>
           </div>
         )}

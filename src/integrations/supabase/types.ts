@@ -371,27 +371,36 @@ export type Database = {
       direct_messages: {
         Row: {
           created_at: string | null
+          gif_url: string | null
           id: string
           is_read: boolean | null
           message: string
+          message_type: string | null
           receiver_id: string
           sender_id: string
+          status: string | null
         }
         Insert: {
           created_at?: string | null
+          gif_url?: string | null
           id?: string
           is_read?: boolean | null
           message: string
+          message_type?: string | null
           receiver_id: string
           sender_id: string
+          status?: string | null
         }
         Update: {
           created_at?: string | null
+          gif_url?: string | null
           id?: string
           is_read?: boolean | null
           message?: string
+          message_type?: string | null
           receiver_id?: string
           sender_id?: string
+          status?: string | null
         }
         Relationships: [
           {
@@ -520,6 +529,45 @@ export type Database = {
           {
             foreignKeyName: "leaderboard_entries_profile_id_fkey"
             columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_reactions: {
+        Row: {
+          created_at: string | null
+          emoji: string
+          id: string
+          message_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          emoji: string
+          id?: string
+          message_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          emoji?: string
+          id?: string
+          message_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "direct_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reactions_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

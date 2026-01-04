@@ -12,11 +12,10 @@ import {
   type FriendRequest
 } from '@/services/friends';
 import {
-  getOrCreateDirectChat,
-  getChatMessages,
+  getMessages,
   sendMessage,
-  subscribeToChatRoom,
-  markRoomAsRead,
+  subscribeToMessages,
+  markMessagesAsRead,
   type ChatMessage
 } from '@/services/chat';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,12 +55,11 @@ export function Friends() {
   
   // Chat state
   const [activeChatFriend, setActiveChatFriend] = useState<FriendProfile | null>(null);
-  const [chatRoomId, setChatRoomId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatChannelRef = useRef<ReturnType<typeof subscribeToChatRoom> | null>(null);
+  const chatChannelRef = useRef<ReturnType<typeof subscribeToMessages> | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -80,7 +78,7 @@ export function Friends() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [chatMessages]);
 
   const loadData = async () => {
     if (!user) return;
@@ -155,22 +153,20 @@ export function Friends() {
         chatChannelRef.current = null;
       }
 
-      const roomId = await getOrCreateDirectChat(user.id, friend.id);
-      setChatRoomId(roomId);
       setActiveChatFriend(friend);
 
-      // Load messages
-      const chatMessages = await getChatMessages(roomId);
-      setMessages(chatMessages);
+      // Load messages using direct_messages table
+      const msgs = await getMessages(user.id, friend.id);
+      setChatMessages(msgs);
 
       // Mark as read
-      await markRoomAsRead(roomId, user.id);
+      await markMessagesAsRead(user.id, friend.id);
 
       // Subscribe to new messages
-      const channel = subscribeToChatRoom(roomId, (newMsg) => {
-        setMessages(prev => (prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]));
+      const channel = subscribeToMessages(user.id, friend.id, (newMsg) => {
+        setChatMessages(prev => (prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]));
         if (newMsg.sender_id !== user.id) {
-          markRoomAsRead(roomId, user.id);
+          markMessagesAsRead(user.id, friend.id);
         }
       });
 
@@ -189,17 +185,19 @@ export function Friends() {
     }
 
     setActiveChatFriend(null);
-    setChatRoomId(null);
-    setMessages([]);
+    setChatMessages([]);
     setNewMessage('');
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !chatRoomId || !user || isSending) return;
+    if (!newMessage.trim() || !activeChatFriend || !user || isSending) return;
 
     setIsSending(true);
     try {
-      await sendMessage(chatRoomId, user.id, newMessage.trim());
+      const result = await sendMessage(user.id, activeChatFriend.id, newMessage.trim());
+      if (!result.success) {
+        toast.error(result.error || 'Failed to send message');
+      }
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
@@ -259,14 +257,14 @@ export function Friends() {
         {/* Messages */}
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
-            {messages.length === 0 ? (
+            {chatMessages.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>No messages yet</p>
                 <p className="text-sm">Start the conversation!</p>
               </div>
             ) : (
-              messages.map(msg => (
+              chatMessages.map(msg => (
                 <div
                   key={msg.id}
                   className={cn(
@@ -282,7 +280,7 @@ export function Friends() {
                         : "bg-muted rounded-bl-md"
                     )}
                   >
-                    <p className="text-sm">{msg.message_text}</p>
+                    <p className="text-sm">{msg.message}</p>
                     <p className={cn(
                       "text-[10px] mt-1",
                       msg.sender_id === user.id ? "text-primary-foreground/70" : "text-muted-foreground"

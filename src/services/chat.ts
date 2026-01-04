@@ -6,12 +6,27 @@ export interface ChatMessage {
   sender_id: string;
   receiver_id: string;
   message: string;
+  message_type: 'text' | 'gif' | 'image';
+  gif_url?: string;
   is_read: boolean;
+  status: 'sent' | 'delivered' | 'read';
   created_at: string;
   sender?: {
     id: string;
     username: string | null;
     avatar_url: string | null;
+  };
+  reactions?: MessageReaction[];
+}
+
+export interface MessageReaction {
+  id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+  user?: {
+    username: string | null;
   };
 }
 
@@ -19,12 +34,14 @@ export interface ChatMessage {
 export async function sendMessage(
   senderId: string,
   receiverId: string,
-  messageText: string
+  messageText: string,
+  messageType: 'text' | 'gif' = 'text',
+  gifUrl?: string
 ): Promise<{ success: boolean; message?: ChatMessage; error?: string }> {
   try {
-    console.log('[chat] Sending message:', { senderId, receiverId });
+    console.log('[chat] Sending message:', { senderId, receiverId, messageType });
     
-    if (!messageText.trim()) {
+    if (messageType === 'text' && !messageText.trim()) {
       return { success: false, error: 'Message cannot be empty' };
     }
     
@@ -37,8 +54,11 @@ export async function sendMessage(
       .insert({
         sender_id: senderId,
         receiver_id: receiverId,
-        message: messageText.trim(),
+        message: messageText.trim() || (messageType === 'gif' ? 'GIF' : ''),
+        message_type: messageType,
+        gif_url: gifUrl,
         is_read: false,
+        status: 'sent',
       })
       .select(`
         *,
@@ -63,9 +83,13 @@ export async function sendMessage(
         sender_id: data.sender_id,
         receiver_id: data.receiver_id,
         message: data.message,
-        is_read: data.is_read,
-        created_at: data.created_at,
+        message_type: (data.message_type || 'text') as 'text' | 'gif' | 'image',
+        gif_url: data.gif_url ?? undefined,
+        is_read: data.is_read ?? false,
+        status: (data.status || 'sent') as 'sent' | 'delivered' | 'read',
+        created_at: data.created_at ?? new Date().toISOString(),
         sender: data.sender as ChatMessage['sender'],
+        reactions: [],
       }
     };
   } catch (error: unknown) {
@@ -102,15 +126,36 @@ export async function getMessages(
       return [];
     }
 
+    const messageIds = (data || []).map(m => m.id);
+    
+    // Fetch reactions for all messages
+    let reactions: MessageReaction[] = [];
+    if (messageIds.length > 0) {
+      const { data: reactionsData } = await supabase
+        .from('message_reactions')
+        .select(`
+          *,
+          user:profiles!message_reactions_user_id_fkey (
+            username
+          )
+        `)
+        .in('message_id', messageIds);
+      reactions = (reactionsData || []) as MessageReaction[];
+    }
+
     console.log('[chat] Found', data?.length || 0, 'messages');
     return (data || []).map(msg => ({
       id: msg.id,
       sender_id: msg.sender_id,
       receiver_id: msg.receiver_id,
       message: msg.message,
-      is_read: msg.is_read,
-      created_at: msg.created_at,
+      message_type: (msg.message_type || 'text') as 'text' | 'gif' | 'image',
+      gif_url: msg.gif_url ?? undefined,
+      is_read: msg.is_read ?? false,
+      status: (msg.status || 'sent') as 'sent' | 'delivered' | 'read',
+      created_at: msg.created_at ?? new Date().toISOString(),
       sender: msg.sender as ChatMessage['sender'],
+      reactions: reactions.filter(r => r.message_id === msg.id),
     }));
   } catch (error) {
     console.error('[chat] Failed to get messages:', error);
@@ -118,7 +163,7 @@ export async function getMessages(
   }
 }
 
-// Mark messages as read
+// Mark messages as read and update status
 export async function markMessagesAsRead(
   userId: string,
   friendId: string
@@ -126,7 +171,7 @@ export async function markMessagesAsRead(
   try {
     await supabase
       .from('direct_messages')
-      .update({ is_read: true })
+      .update({ is_read: true, status: 'read' })
       .eq('receiver_id', userId)
       .eq('sender_id', friendId)
       .eq('is_read', false);
@@ -149,6 +194,61 @@ export async function getUnreadCount(userId: string): Promise<number> {
   } catch (error) {
     console.error('[chat] Failed to get unread count:', error);
     return 0;
+  }
+}
+
+// Add reaction to a message
+export async function addReaction(
+  messageId: string,
+  userId: string,
+  emoji: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('message_reactions')
+      .insert({
+        message_id: messageId,
+        user_id: userId,
+        emoji,
+      });
+
+    if (error) {
+      // If it's a unique constraint violation, the reaction already exists
+      if (error.code === '23505') {
+        return { success: true };
+      }
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[chat] Failed to add reaction:', error);
+    return { success: false, error: 'Failed to add reaction' };
+  }
+}
+
+// Remove reaction from a message
+export async function removeReaction(
+  messageId: string,
+  userId: string,
+  emoji: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('message_reactions')
+      .delete()
+      .eq('message_id', messageId)
+      .eq('user_id', userId)
+      .eq('emoji', emoji);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[chat] Failed to remove reaction:', error);
+    return { success: false, error: 'Failed to remove reaction' };
   }
 }
 
@@ -175,7 +275,10 @@ export function subscribeToMessages(
         sender_id: string; 
         receiver_id: string; 
         message: string; 
+        message_type?: string;
+        gif_url?: string;
         is_read: boolean; 
+        status?: string;
         created_at: string; 
       };
       
@@ -197,17 +300,63 @@ export function subscribeToMessages(
 
       onNewMessage({
         ...newMsg,
+        message_type: (newMsg.message_type as 'text' | 'gif' | 'image') || 'text',
+        status: (newMsg.status as 'sent' | 'delivered' | 'read') || 'sent',
         sender: profile || { id: newMsg.sender_id, username: null, avatar_url: null },
+        reactions: [],
       });
 
-      // Auto-mark as read if it's for current user
+      // Auto-mark as read if it's for current user and update to delivered
       if (newMsg.receiver_id === userId) {
         await markMessagesAsRead(userId, friendId);
+      } else if (newMsg.sender_id === userId) {
+        // Update status to delivered when sent by current user
+        await supabase
+          .from('direct_messages')
+          .update({ status: 'delivered' })
+          .eq('id', newMsg.id);
       }
     }
   ).subscribe((status) => {
     console.log('[chat] Subscription status:', status);
   });
+
+  return channel;
+}
+
+// Subscribe to reactions changes
+export function subscribeToReactions(
+  messageIds: string[],
+  onReactionChange: (reaction: MessageReaction, type: 'INSERT' | 'DELETE') => void
+): RealtimeChannel {
+  const channel = supabase.channel('reactions-changes');
+
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'message_reactions',
+    },
+    async (payload) => {
+      if (payload.eventType === 'INSERT') {
+        const newReaction = payload.new as MessageReaction;
+        if (messageIds.includes(newReaction.message_id)) {
+          // Get username
+          const { data: user } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', newReaction.user_id)
+            .single();
+          
+          onReactionChange({ ...newReaction, user }, 'INSERT');
+        }
+      } else if (payload.eventType === 'DELETE') {
+        const oldReaction = payload.old as MessageReaction;
+        onReactionChange(oldReaction, 'DELETE');
+      }
+    }
+  ).subscribe();
 
   return channel;
 }

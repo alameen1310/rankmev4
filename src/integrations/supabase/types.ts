@@ -344,111 +344,6 @@ export type Database = {
           },
         ]
       }
-      chat_messages: {
-        Row: {
-          created_at: string | null
-          data: Json | null
-          id: string
-          message_text: string
-          message_type: string | null
-          read_by: string[] | null
-          room_id: string | null
-          sender_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          data?: Json | null
-          id?: string
-          message_text: string
-          message_type?: string | null
-          read_by?: string[] | null
-          room_id?: string | null
-          sender_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          data?: Json | null
-          id?: string
-          message_text?: string
-          message_type?: string | null
-          read_by?: string[] | null
-          room_id?: string | null
-          sender_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chat_messages_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "chat_rooms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chat_messages_sender_id_fkey"
-            columns: ["sender_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      chat_room_participants: {
-        Row: {
-          joined_at: string | null
-          last_read_at: string | null
-          room_id: string
-          user_id: string
-        }
-        Insert: {
-          joined_at?: string | null
-          last_read_at?: string | null
-          room_id: string
-          user_id: string
-        }
-        Update: {
-          joined_at?: string | null
-          last_read_at?: string | null
-          room_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chat_room_participants_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "chat_rooms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chat_room_participants_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      chat_rooms: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string | null
-          type: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name?: string | null
-          type?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string | null
-          type?: string | null
-        }
-        Relationships: []
-      }
       daily_streaks: {
         Row: {
           created_at: string | null
@@ -472,6 +367,48 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      direct_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_messages_receiver_id_fkey"
+            columns: ["receiver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       friend_requests: {
         Row: {
@@ -1056,10 +993,6 @@ export type Database = {
       check_and_award_badges: {
         Args: { user_uuid: string }
         Returns: undefined
-      }
-      get_or_create_direct_chat: {
-        Args: { user1_id: string; user2_id: string }
-        Returns: string
       }
       get_user_rank: {
         Args: { user_uuid: string }

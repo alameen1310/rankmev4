@@ -3,289 +3,211 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface ChatMessage {
   id: string;
-  room_id: string;
   sender_id: string;
-  sender_username?: string;
-  sender_avatar?: string;
-  message_text: string;
-  message_type: 'text' | 'image' | 'battle_invite' | 'system';
-  data: Record<string, unknown>;
+  receiver_id: string;
+  message: string;
+  is_read: boolean;
   created_at: string;
-}
-
-export interface ChatRoom {
-  id: string;
-  type: 'direct' | 'group';
-  name: string | null;
-  participants: ChatParticipant[];
-  last_message?: ChatMessage;
-  unread_count: number;
-}
-
-export interface ChatParticipant {
-  user_id: string;
-  username: string | null;
-  display_name: string | null;
-  avatar_url: string | null;
-  joined_at: string;
-  last_read_at: string;
-}
-
-export async function getOrCreateDirectChat(userId1: string, userId2: string): Promise<string> {
-  console.log('[chat] getOrCreateDirectChat()', { userId1, userId2 });
-  
-  const { data, error } = await supabase.rpc('get_or_create_direct_chat', {
-    user1_id: userId1,
-    user2_id: userId2,
-  });
-  
-  if (error) {
-    console.error('[chat] Error getting/creating direct chat:', error);
-    throw new Error(error.message || 'Failed to open chat');
-  }
-  
-  if (!data) {
-    throw new Error('Failed to create chat room');
-  }
-  
-  console.log('[chat] Got room ID:', data);
-  return data;
-}
-
-export async function getChatRooms(userId: string): Promise<ChatRoom[]> {
-  // Get rooms the user is a participant of
-  const { data: participations, error } = await supabase
-    .from('chat_room_participants')
-    .select('room_id, last_read_at')
-    .eq('user_id', userId);
-  
-  if (error) {
-    console.error('Error fetching chat room participations:', error);
-    throw error;
-  }
-  
-  if (!participations || participations.length === 0) {
-    return [];
-  }
-  
-  const roomIds = participations.map(p => p.room_id);
-  const lastReadMap = new Map(participations.map(p => [p.room_id, p.last_read_at]));
-  
-  // Get room details
-  const { data: rooms } = await supabase
-    .from('chat_rooms')
-    .select('*')
-    .in('id', roomIds);
-  
-  if (!rooms) return [];
-  
-  // Get participants for each room
-  const { data: allParticipants } = await supabase
-    .from('chat_room_participants')
-    .select('room_id, user_id, joined_at, last_read_at')
-    .in('room_id', roomIds);
-  
-  // Get profiles for all participants
-  const participantUserIds = [...new Set((allParticipants || []).map(p => p.user_id))];
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('id, username, display_name, avatar_url')
-    .in('id', participantUserIds);
-  
-  const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-  
-  // Get last message for each room
-  const { data: lastMessages } = await supabase
-    .from('chat_messages')
-    .select('*')
-    .in('room_id', roomIds)
-    .order('created_at', { ascending: false });
-  
-  const lastMessageMap = new Map<string, ChatMessage>();
-  (lastMessages || []).forEach(msg => {
-    if (!lastMessageMap.has(msg.room_id)) {
-      lastMessageMap.set(msg.room_id, msg as ChatMessage);
-    }
-  });
-  
-  // Build room objects
-  return rooms.map(room => ({
-    id: room.id,
-    type: room.type as 'direct' | 'group',
-    name: room.name,
-    participants: (allParticipants || [])
-      .filter(p => p.room_id === room.id)
-      .map(p => ({
-        user_id: p.user_id,
-        username: profileMap.get(p.user_id)?.username || null,
-        display_name: profileMap.get(p.user_id)?.display_name || null,
-        avatar_url: profileMap.get(p.user_id)?.avatar_url || null,
-        joined_at: p.joined_at,
-        last_read_at: p.last_read_at,
-      })),
-    last_message: lastMessageMap.get(room.id),
-    unread_count: (lastMessages || []).filter(
-      msg => msg.room_id === room.id && 
-      msg.sender_id !== userId &&
-      new Date(msg.created_at) > new Date(lastReadMap.get(room.id) || 0)
-    ).length,
-  }));
-}
-
-export async function getChatMessages(
-  roomId: string, 
-  limit = 50, 
-  before?: string
-): Promise<ChatMessage[]> {
-  console.log('[chat] getChatMessages()', { roomId, limit });
-  
-  let query = supabase
-    .from('chat_messages')
-    .select('*')
-    .eq('room_id', roomId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  
-  if (before) {
-    query = query.lt('created_at', before);
-  }
-  
-  const { data, error } = await query;
-  
-  if (error) {
-    console.error('[chat] Error fetching chat messages:', error);
-    throw new Error(error.message || 'Failed to load messages');
-  }
-  
-  // Get sender profiles
-  const senderIds = [...new Set((data || []).map(m => m.sender_id))];
-  
-  if (senderIds.length === 0) {
-    return [];
-  }
-  
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('id, username, avatar_url')
-    .in('id', senderIds);
-  
-  const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-  
-  return (data || []).reverse().map(msg => ({
-    ...msg,
-    sender_username: profileMap.get(msg.sender_id)?.username || 'Unknown',
-    sender_avatar: profileMap.get(msg.sender_id)?.avatar_url || undefined,
-  })) as ChatMessage[];
-}
-
-export async function sendMessage(
-  roomId: string,
-  senderId: string,
-  messageText: string,
-  messageType: 'text' | 'image' | 'battle_invite' | 'system' = 'text',
-  data: Record<string, unknown> = {}
-): Promise<ChatMessage> {
-  console.log('[chat] sendMessage()', { roomId, senderId, messageType, messageLength: messageText.length });
-
-  if (!messageText.trim()) {
-    throw new Error('Message cannot be empty');
-  }
-
-  const { data: insertedMessage, error } = await supabase
-    .from('chat_messages')
-    .insert({
-      room_id: roomId,
-      sender_id: senderId,
-      message_text: messageText.trim(),
-      message_type: messageType,
-      data: data as any,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('[chat] Error sending message:', error);
-    throw new Error(error.message || 'Failed to send message');
-  }
-
-  console.log('[chat] Message sent successfully:', insertedMessage.id);
-  
-  return {
-    id: insertedMessage.id,
-    room_id: insertedMessage.room_id,
-    sender_id: insertedMessage.sender_id,
-    message_text: insertedMessage.message_text,
-    message_type: insertedMessage.message_type as ChatMessage['message_type'],
-    data: (insertedMessage.data as Record<string, unknown>) || {},
-    created_at: insertedMessage.created_at,
+  sender?: {
+    id: string;
+    username: string | null;
+    avatar_url: string | null;
   };
 }
 
-export async function markRoomAsRead(roomId: string, userId: string): Promise<void> {
-  const { error } = await supabase
-    .from('chat_room_participants')
-    .update({ last_read_at: new Date().toISOString() })
-    .eq('room_id', roomId)
-    .eq('user_id', userId);
-  
-  if (error) {
-    console.error('Error marking room as read:', error);
+// Send a direct message
+export async function sendMessage(
+  senderId: string,
+  receiverId: string,
+  messageText: string
+): Promise<{ success: boolean; message?: ChatMessage; error?: string }> {
+  try {
+    console.log('[chat] Sending message:', { senderId, receiverId });
+    
+    if (!messageText.trim()) {
+      return { success: false, error: 'Message cannot be empty' };
+    }
+    
+    if (!senderId || !receiverId) {
+      return { success: false, error: 'Missing sender or receiver ID' };
+    }
+
+    const { data, error } = await supabase
+      .from('direct_messages')
+      .insert({
+        sender_id: senderId,
+        receiver_id: receiverId,
+        message: messageText.trim(),
+        is_read: false,
+      })
+      .select(`
+        *,
+        sender:profiles!direct_messages_sender_id_fkey (
+          id,
+          username,
+          avatar_url
+        )
+      `)
+      .single();
+
+    if (error) {
+      console.error('[chat] Error sending message:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('[chat] Message sent successfully:', data.id);
+    return { 
+      success: true, 
+      message: {
+        id: data.id,
+        sender_id: data.sender_id,
+        receiver_id: data.receiver_id,
+        message: data.message,
+        is_read: data.is_read,
+        created_at: data.created_at,
+        sender: data.sender as ChatMessage['sender'],
+      }
+    };
+  } catch (error: unknown) {
+    console.error('[chat] Unexpected error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
-export function subscribeToChatRoom(
-  roomId: string,
-  onNewMessage: (message: ChatMessage) => void
-): RealtimeChannel {
-  console.log('[chat] Subscribing to room:', roomId);
-  
-  const channel = supabase.channel(`chat:${roomId}`);
-  
-  channel
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'chat_messages',
-        filter: `room_id=eq.${roomId}`,
-      },
-      async (payload) => {
-        console.log('[chat] New message via realtime:', payload.new);
-        const msg = payload.new as any;
-        
-        // Get sender profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username, avatar_url')
-          .eq('id', msg.sender_id)
-          .single();
-        
-        onNewMessage({
-          ...msg,
-          sender_username: profile?.username || 'Unknown',
-          sender_avatar: profile?.avatar_url || undefined,
-        } as ChatMessage);
-      }
-    )
-    .subscribe((status) => {
-      console.log('[chat] Subscription status:', status);
-    });
-  
-  return channel;
+// Get messages between two users
+export async function getMessages(
+  userId: string,
+  friendId: string,
+  limit = 50
+): Promise<ChatMessage[]> {
+  try {
+    console.log('[chat] Getting messages between:', userId, friendId);
+
+    const { data, error } = await supabase
+      .from('direct_messages')
+      .select(`
+        *,
+        sender:profiles!direct_messages_sender_id_fkey (
+          id,
+          username,
+          avatar_url
+        )
+      `)
+      .or(`and(sender_id.eq.${userId},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${userId})`)
+      .order('created_at', { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      console.error('[chat] Error fetching messages:', error);
+      return [];
+    }
+
+    console.log('[chat] Found', data?.length || 0, 'messages');
+    return (data || []).map(msg => ({
+      id: msg.id,
+      sender_id: msg.sender_id,
+      receiver_id: msg.receiver_id,
+      message: msg.message,
+      is_read: msg.is_read,
+      created_at: msg.created_at,
+      sender: msg.sender as ChatMessage['sender'],
+    }));
+  } catch (error) {
+    console.error('[chat] Failed to get messages:', error);
+    return [];
+  }
 }
 
-export async function sendBattleInvite(
-  roomId: string,
-  senderId: string,
-  battleId: string,
-  subjectName: string
-): Promise<ChatMessage> {
-  return sendMessage(
-    roomId,
-    senderId,
-    `🎮 Battle Invitation: ${subjectName}`,
-    'battle_invite',
-    { battle_id: battleId, subject_name: subjectName }
-  );
+// Mark messages as read
+export async function markMessagesAsRead(
+  userId: string,
+  friendId: string
+): Promise<void> {
+  try {
+    await supabase
+      .from('direct_messages')
+      .update({ is_read: true })
+      .eq('receiver_id', userId)
+      .eq('sender_id', friendId)
+      .eq('is_read', false);
+  } catch (error) {
+    console.error('[chat] Failed to mark messages as read:', error);
+  }
+}
+
+// Get unread message count
+export async function getUnreadCount(userId: string): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from('direct_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('receiver_id', userId)
+      .eq('is_read', false);
+
+    if (error) throw error;
+    return count || 0;
+  } catch (error) {
+    console.error('[chat] Failed to get unread count:', error);
+    return 0;
+  }
+}
+
+// Subscribe to new messages in a conversation
+export function subscribeToMessages(
+  userId: string,
+  friendId: string,
+  onNewMessage: (message: ChatMessage) => void
+): RealtimeChannel {
+  console.log('[chat] Subscribing to messages:', userId, '↔', friendId);
+
+  const channel = supabase.channel(`dm:${userId}:${friendId}`);
+
+  channel.on(
+    'postgres_changes',
+    {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'direct_messages',
+    },
+    async (payload) => {
+      const newMsg = payload.new as { 
+        id: string; 
+        sender_id: string; 
+        receiver_id: string; 
+        message: string; 
+        is_read: boolean; 
+        created_at: string; 
+      };
+      
+      // Only process messages in this conversation
+      const isInConversation = 
+        (newMsg.sender_id === userId && newMsg.receiver_id === friendId) ||
+        (newMsg.sender_id === friendId && newMsg.receiver_id === userId);
+      
+      if (!isInConversation) return;
+
+      console.log('[chat] New message via realtime:', newMsg.id);
+
+      // Get sender profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .eq('id', newMsg.sender_id)
+        .single();
+
+      onNewMessage({
+        ...newMsg,
+        sender: profile || { id: newMsg.sender_id, username: null, avatar_url: null },
+      });
+
+      // Auto-mark as read if it's for current user
+      if (newMsg.receiver_id === userId) {
+        await markMessagesAsRead(userId, friendId);
+      }
+    }
+  ).subscribe((status) => {
+    console.log('[chat] Subscription status:', status);
+  });
+
+  return channel;
 }

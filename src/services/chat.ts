@@ -1,13 +1,22 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+export type MessageType = 'text' | 'gif' | 'image' | 'video' | 'audio';
+
 export interface ChatMessage {
   id: string;
   sender_id: string;
   receiver_id: string;
   message: string;
-  message_type: 'text' | 'gif' | 'image';
+  message_type: MessageType;
   gif_url?: string;
+  media_url?: string;
+  thumbnail_url?: string;
+  file_size?: number;
+  file_name?: string;
+  duration?: number;
+  width?: number;
+  height?: number;
   is_read: boolean;
   status: 'sent' | 'delivered' | 'read';
   created_at: string;
@@ -35,8 +44,17 @@ export async function sendMessage(
   senderId: string,
   receiverId: string,
   messageText: string,
-  messageType: 'text' | 'gif' = 'text',
-  gifUrl?: string
+  messageType: MessageType = 'text',
+  options?: {
+    gifUrl?: string;
+    mediaUrl?: string;
+    thumbnailUrl?: string;
+    fileSize?: number;
+    fileName?: string;
+    duration?: number;
+    width?: number;
+    height?: number;
+  }
 ): Promise<{ success: boolean; message?: ChatMessage; error?: string }> {
   try {
     console.log('[chat] Sending message:', { senderId, receiverId, messageType });
@@ -54,9 +72,16 @@ export async function sendMessage(
       .insert({
         sender_id: senderId,
         receiver_id: receiverId,
-        message: messageText.trim() || (messageType === 'gif' ? 'GIF' : ''),
+        message: messageText.trim() || getDefaultMessageText(messageType),
         message_type: messageType,
-        gif_url: gifUrl,
+        gif_url: options?.gifUrl,
+        media_url: options?.mediaUrl,
+        thumbnail_url: options?.thumbnailUrl,
+        file_size: options?.fileSize,
+        file_name: options?.fileName,
+        duration: options?.duration,
+        width: options?.width,
+        height: options?.height,
         is_read: false,
         status: 'sent',
       })
@@ -78,24 +103,45 @@ export async function sendMessage(
     console.log('[chat] Message sent successfully:', data.id);
     return { 
       success: true, 
-      message: {
-        id: data.id,
-        sender_id: data.sender_id,
-        receiver_id: data.receiver_id,
-        message: data.message,
-        message_type: (data.message_type || 'text') as 'text' | 'gif' | 'image',
-        gif_url: data.gif_url ?? undefined,
-        is_read: data.is_read ?? false,
-        status: (data.status || 'sent') as 'sent' | 'delivered' | 'read',
-        created_at: data.created_at ?? new Date().toISOString(),
-        sender: data.sender as ChatMessage['sender'],
-        reactions: [],
-      }
+      message: mapRowToMessage(data)
     };
   } catch (error: unknown) {
     console.error('[chat] Unexpected error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
+}
+
+function getDefaultMessageText(type: MessageType): string {
+  switch (type) {
+    case 'gif': return 'GIF';
+    case 'image': return '📷 Photo';
+    case 'video': return '🎬 Video';
+    case 'audio': return '🎤 Voice message';
+    default: return '';
+  }
+}
+
+function mapRowToMessage(row: any): ChatMessage {
+  return {
+    id: row.id,
+    sender_id: row.sender_id,
+    receiver_id: row.receiver_id,
+    message: row.message,
+    message_type: (row.message_type || 'text') as MessageType,
+    gif_url: row.gif_url ?? undefined,
+    media_url: row.media_url ?? undefined,
+    thumbnail_url: row.thumbnail_url ?? undefined,
+    file_size: row.file_size ?? undefined,
+    file_name: row.file_name ?? undefined,
+    duration: row.duration ?? undefined,
+    width: row.width ?? undefined,
+    height: row.height ?? undefined,
+    is_read: row.is_read ?? false,
+    status: (row.status || 'sent') as 'sent' | 'delivered' | 'read',
+    created_at: row.created_at ?? new Date().toISOString(),
+    sender: row.sender as ChatMessage['sender'],
+    reactions: row.reactions || [],
+  };
 }
 
 // Get messages between two users
@@ -145,16 +191,7 @@ export async function getMessages(
 
     console.log('[chat] Found', data?.length || 0, 'messages');
     return (data || []).map(msg => ({
-      id: msg.id,
-      sender_id: msg.sender_id,
-      receiver_id: msg.receiver_id,
-      message: msg.message,
-      message_type: (msg.message_type || 'text') as 'text' | 'gif' | 'image',
-      gif_url: msg.gif_url ?? undefined,
-      is_read: msg.is_read ?? false,
-      status: (msg.status || 'sent') as 'sent' | 'delivered' | 'read',
-      created_at: msg.created_at ?? new Date().toISOString(),
-      sender: msg.sender as ChatMessage['sender'],
+      ...mapRowToMessage(msg),
       reactions: reactions.filter(r => r.message_id === msg.id),
     }));
   } catch (error) {
@@ -299,9 +336,7 @@ export function subscribeToMessages(
         .single();
 
       onNewMessage({
-        ...newMsg,
-        message_type: (newMsg.message_type as 'text' | 'gif' | 'image') || 'text',
-        status: (newMsg.status as 'sent' | 'delivered' | 'read') || 'sent',
+        ...mapRowToMessage(newMsg),
         sender: profile || { id: newMsg.sender_id, username: null, avatar_url: null },
         reactions: [],
       });

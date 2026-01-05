@@ -45,7 +45,10 @@ import { ChatMessage as ChatMessageComponent } from '@/components/chat/ChatMessa
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { EmojiButton } from '@/components/chat/EmojiButton';
 import { GifButton } from '@/components/chat/GifButton';
+import { VoiceRecorderButton } from '@/components/chat/VoiceRecorderButton';
+import { MediaPicker } from '@/components/chat/MediaPicker';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { useMediaUploader } from '@/hooks/useMediaUploader';
 
 type Tab = 'friends' | 'requests' | 'search';
 
@@ -84,6 +87,9 @@ export function Friends() {
     activeChatFriend?.id,
     profile?.username || undefined
   );
+
+  // Media uploader
+  const { isUploading, uploadMedia, uploadVoiceNote } = useMediaUploader(user?.id);
 
   useEffect(() => {
     if (user) {
@@ -222,7 +228,19 @@ export function Friends() {
     setNewMessage('');
   };
 
-  const handleSendMessage = async (messageType: 'text' | 'gif' = 'text', gifUrl?: string) => {
+  const handleSendMessage = async (
+    messageType: 'text' | 'gif' | 'image' | 'video' | 'audio' = 'text', 
+    options?: {
+      gifUrl?: string;
+      mediaUrl?: string;
+      thumbnailUrl?: string;
+      fileSize?: number;
+      fileName?: string;
+      duration?: number;
+      width?: number;
+      height?: number;
+    }
+  ) => {
     if (messageType === 'text' && !newMessage.trim()) return;
     if (!activeChatFriend || !user || isSending) return;
 
@@ -233,9 +251,9 @@ export function Friends() {
       const result = await sendMessage(
         user.id, 
         activeChatFriend.id, 
-        messageType === 'text' ? newMessage.trim() : 'GIF',
+        messageType === 'text' ? newMessage.trim() : '',
         messageType,
-        gifUrl
+        options
       );
       if (!result.success) {
         toast.error(result.error || 'Failed to send message');
@@ -266,7 +284,50 @@ export function Friends() {
   };
 
   const handleGifSelect = (gif: Gif) => {
-    handleSendMessage('gif', gif.url);
+    handleSendMessage('gif', { gifUrl: gif.url });
+  };
+
+  // Handle voice note send
+  const handleVoiceNoteSend = async (blob: Blob, duration: number) => {
+    if (!activeChatFriend || !user) return;
+    
+    try {
+      const result = await uploadVoiceNote(blob, duration);
+      if (result) {
+        await handleSendMessage('audio', {
+          mediaUrl: result.url,
+          fileName: result.fileName,
+          fileSize: result.fileSize,
+          duration: result.duration,
+        });
+      }
+    } catch (error) {
+      console.error('Error sending voice note:', error);
+      toast.error('Failed to send voice note');
+    }
+  };
+
+  // Handle image/video upload
+  const handleMediaSelect = async (file: File, type: 'image' | 'video') => {
+    if (!activeChatFriend || !user) return;
+    
+    try {
+      const result = await uploadMedia(file, type);
+      if (result) {
+        await handleSendMessage(type, {
+          mediaUrl: result.url,
+          thumbnailUrl: result.thumbnailUrl,
+          fileName: result.fileName,
+          fileSize: result.fileSize,
+          duration: result.duration,
+          width: result.width,
+          height: result.height,
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading media:', error);
+      toast.error(`Failed to send ${type}`);
+    }
   };
 
   const handleAddReaction = async (messageId: string, emoji: string) => {
@@ -414,6 +475,11 @@ export function Friends() {
                     message={msg.message}
                     messageType={msg.message_type}
                     gifUrl={msg.gif_url}
+                    mediaUrl={msg.media_url}
+                    thumbnailUrl={msg.thumbnail_url}
+                    duration={msg.duration}
+                    width={msg.width}
+                    height={msg.height}
                     isOwn={msg.sender_id === user.id}
                     timestamp={msg.created_at}
                     status={msg.status}
@@ -440,7 +506,13 @@ export function Friends() {
           className="flex-shrink-0 p-4 border-t bg-card"
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <MediaPicker
+              onSelectImage={(file) => handleMediaSelect(file, 'image')}
+              onSelectVideo={(file) => handleMediaSelect(file, 'video')}
+              isUploading={isUploading}
+              disabled={isSending}
+            />
             <EmojiButton onEmojiSelect={handleEmojiSelect} />
             <GifButton onGifSelect={handleGifSelect} />
             <Input
@@ -450,18 +522,26 @@ export function Friends() {
               placeholder="Type a message..."
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
               className="flex-1"
+              disabled={isUploading}
             />
-            <Button 
-              onClick={() => handleSendMessage()} 
-              disabled={!newMessage.trim() || isSending}
-              size="icon"
-            >
-              {isSending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </Button>
+            {newMessage.trim() ? (
+              <Button 
+                onClick={() => handleSendMessage()} 
+                disabled={!newMessage.trim() || isSending || isUploading}
+                size="icon"
+              >
+                {isSending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </Button>
+            ) : (
+              <VoiceRecorderButton
+                onSend={handleVoiceNoteSend}
+                disabled={isSending || isUploading}
+              />
+            )}
           </div>
         </div>
       </div>

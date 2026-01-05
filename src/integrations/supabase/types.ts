@@ -371,36 +371,57 @@ export type Database = {
       direct_messages: {
         Row: {
           created_at: string | null
+          duration: number | null
+          file_name: string | null
+          file_size: number | null
           gif_url: string | null
+          height: number | null
           id: string
           is_read: boolean | null
+          media_url: string | null
           message: string
           message_type: string | null
           receiver_id: string
           sender_id: string
           status: string | null
+          thumbnail_url: string | null
+          width: number | null
         }
         Insert: {
           created_at?: string | null
+          duration?: number | null
+          file_name?: string | null
+          file_size?: number | null
           gif_url?: string | null
+          height?: number | null
           id?: string
           is_read?: boolean | null
+          media_url?: string | null
           message: string
           message_type?: string | null
           receiver_id: string
           sender_id: string
           status?: string | null
+          thumbnail_url?: string | null
+          width?: number | null
         }
         Update: {
           created_at?: string | null
+          duration?: number | null
+          file_name?: string | null
+          file_size?: number | null
           gif_url?: string | null
+          height?: number | null
           id?: string
           is_read?: boolean | null
+          media_url?: string | null
           message?: string
           message_type?: string | null
           receiver_id?: string
           sender_id?: string
           status?: string | null
+          thumbnail_url?: string | null
+          width?: number | null
         }
         Relationships: [
           {

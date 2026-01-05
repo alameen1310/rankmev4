@@ -351,12 +351,15 @@ export function Friends() {
     );
   }
 
-  // Chat View - Fixed viewport height layout
+  // Chat View - Fixed viewport height layout with higher z-index to cover bottom nav
   if (activeChatFriend) {
     return (
-      <div className="fixed inset-0 flex flex-col bg-background">
+      <div className="fixed inset-0 z-[60] flex flex-col bg-background">
         {/* Chat Header - Fixed */}
-        <div className="flex-shrink-0 flex items-center gap-3 p-4 border-b bg-card safe-top">
+        <div 
+          className="flex-shrink-0 flex items-center gap-3 p-4 border-b bg-card"
+          style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
+        >
           <Button variant="ghost" size="icon" onClick={closeChat}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -432,8 +435,11 @@ export function Friends() {
           </div>
         )}
 
-        {/* Message Input - Fixed at bottom */}
-        <div className="flex-shrink-0 p-4 border-t bg-card safe-bottom">
+        {/* Message Input - Fixed at bottom with proper safe area */}
+        <div 
+          className="flex-shrink-0 p-4 border-t bg-card"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
           <div className="flex items-center gap-2">
             <EmojiButton onEmojiSelect={handleEmojiSelect} />
             <GifButton onGifSelect={handleGifSelect} />

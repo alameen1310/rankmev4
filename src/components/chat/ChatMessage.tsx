@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { cn } from '@/lib/utils';
-import { MessageStatus } from './MessageStatus';
+import { MessageStatusIndicator } from './MessageStatusIndicator';
 import { MessageReactions } from './MessageReactions';
 import { ReactionPicker } from './ReactionPicker';
 import { VoiceNotePlayer } from './VoiceNotePlayer';
 import { MediaMessage, MediaViewer } from './MediaViewer';
+import { ReplyIndicator } from './ReplyPreview';
+import { SwipeableMessage } from './SwipeableMessage';
 import { useLongPress } from '@/hooks/useLongPress';
-import type { MessageType } from '@/services/chat';
+import type { MessageType, MessageStatus } from '@/services/chat';
 
 interface Reaction {
   emoji: string;
@@ -27,10 +29,16 @@ interface ChatMessageProps {
   height?: number;
   isOwn: boolean;
   timestamp: string;
-  status?: 'sent' | 'delivered' | 'read';
+  status?: MessageStatus;
   reactions: Reaction[];
+  replyTo?: {
+    message: string;
+    messageType: MessageType;
+    senderName: string;
+  };
   onAddReaction: (messageId: string, emoji: string) => void;
   onRemoveReaction: (messageId: string, emoji: string) => void;
+  onReply?: (messageId: string) => void;
 }
 
 export function ChatMessage({
@@ -184,7 +192,7 @@ export function ChatMessage({
               {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
             {isOwn && status && (
-              <MessageStatus 
+              <MessageStatusIndicator 
                 status={status} 
                 className={isOwn ? "text-primary-foreground" : "text-muted-foreground"} 
               />

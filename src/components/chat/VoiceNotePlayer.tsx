@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAudioWaveform } from '@/hooks/useAudioWaveform';
 
 interface VoiceNotePlayerProps {
   url: string;
@@ -15,6 +16,19 @@ export function VoiceNotePlayer({ url, duration = 0, isOwn }: VoiceNotePlayerPro
   const [playbackRate, setPlaybackRate] = useState(1);
   const [totalDuration, setTotalDuration] = useState(duration);
   const audioRef = useRef<HTMLAudioElement>(null);
+  
+  const { waveform, analyzeAudioFile } = useAudioWaveform(30);
+
+  // Analyze audio when URL changes
+  useEffect(() => {
+    if (url) {
+      analyzeAudioFile(url).then((data) => {
+        if (data.duration > 0) {
+          setTotalDuration(data.duration);
+        }
+      });
+    }
+  }, [url, analyzeAudioFile]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -82,10 +96,13 @@ export function VoiceNotePlayer({ url, duration = 0, isOwn }: VoiceNotePlayerPro
 
   const progress = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
 
+  // Use real waveform if available, otherwise generate placeholder
+  const displayWaveform = waveform.length > 0 
+    ? waveform 
+    : Array(30).fill(0).map((_, i) => Math.sin((i / 30) * Math.PI * 3) * 0.4 + 0.3);
+
   return (
-    <div className={cn(
-      "flex items-center gap-2 p-2 min-w-[180px]",
-    )}>
+    <div className={cn("flex items-center gap-2 p-2 min-w-[200px]")}>
       <audio ref={audioRef} src={url} preload="metadata" />
       
       {/* Play/Pause Button */}
@@ -93,7 +110,7 @@ export function VoiceNotePlayer({ url, duration = 0, isOwn }: VoiceNotePlayerPro
         variant="ghost"
         size="icon"
         className={cn(
-          "h-9 w-9 rounded-full shrink-0",
+          "h-10 w-10 rounded-full shrink-0",
           isOwn 
             ? "bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground" 
             : "bg-primary/10 hover:bg-primary/20 text-primary"
@@ -101,29 +118,30 @@ export function VoiceNotePlayer({ url, duration = 0, isOwn }: VoiceNotePlayerPro
         onClick={togglePlay}
       >
         {isPlaying ? (
-          <Pause className="w-4 h-4" />
+          <Pause className="w-5 h-5" />
         ) : (
-          <Play className="w-4 h-4 ml-0.5" />
+          <Play className="w-5 h-5 ml-0.5" />
         )}
       </Button>
 
       {/* Waveform/Progress */}
-      <div className="flex-1 flex flex-col gap-1">
+      <div className="flex-1 flex flex-col gap-1.5">
         <div 
-          className="relative h-6 flex items-center gap-0.5 cursor-pointer"
+          className="relative h-8 flex items-center gap-[2px] cursor-pointer"
           onClick={handleSeek}
         >
-          {/* Waveform bars */}
-          {Array.from({ length: 25 }).map((_, i) => {
-            const barProgress = (i / 25) * 100;
+          {/* Waveform bars with real audio data */}
+          {displayWaveform.map((amplitude, i) => {
+            const barProgress = (i / displayWaveform.length) * 100;
             const isActive = barProgress <= progress;
-            const height = Math.sin((i / 25) * Math.PI * 3) * 12 + 8;
+            // Scale height based on actual amplitude
+            const height = Math.max(4, amplitude * 28);
             
             return (
               <div
                 key={i}
                 className={cn(
-                  "w-1 rounded-full transition-colors",
+                  "flex-1 min-w-[2px] max-w-[4px] rounded-full transition-all duration-75",
                   isActive
                     ? isOwn ? "bg-primary-foreground" : "bg-primary"
                     : isOwn ? "bg-primary-foreground/30" : "bg-muted-foreground/30"

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Mic, X, Send, Square } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Mic, X, Send, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import { useRealtimeAudioVisualizer } from '@/hooks/useAudioWaveform';
 
 interface VoiceRecorderButtonProps {
   onSend: (blob: Blob, duration: number) => void;
@@ -11,7 +12,17 @@ interface VoiceRecorderButtonProps {
 
 export function VoiceRecorderButton({ onSend, disabled }: VoiceRecorderButtonProps) {
   const [showRecorder, setShowRecorder] = useState(false);
+  const streamRef = useRef<MediaStream | null>(null);
   
+  const { levels, startVisualization, stopVisualization } = useRealtimeAudioVisualizer(25);
+  
+  const handleRecordingComplete = useCallback((blob: Blob, duration: number) => {
+    stopVisualization();
+    onSend(blob, duration);
+    setShowRecorder(false);
+    streamRef.current = null;
+  }, [onSend, stopVisualization]);
+
   const {
     isRecording,
     duration,
@@ -21,11 +32,46 @@ export function VoiceRecorderButton({ onSend, disabled }: VoiceRecorderButtonPro
     error,
   } = useVoiceRecorder({
     maxDuration: 120,
-    onRecordingComplete: (blob, dur) => {
-      onSend(blob, dur);
-      setShowRecorder(false);
-    },
+    onRecordingComplete: handleRecordingComplete,
   });
+
+  const handleStartRecording = async () => {
+    setShowRecorder(true);
+    
+    try {
+      // Get the stream first for visualization
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      streamRef.current = stream;
+      startVisualization(stream);
+      
+      // Then start the actual recording
+      await startRecording();
+    } catch (err) {
+      console.error('Failed to start recording:', err);
+      setShowRecorder(false);
+    }
+  };
+
+  const handleCancel = () => {
+    stopVisualization();
+    cancelRecording();
+    setShowRecorder(false);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const handleStop = () => {
+    stopRecording();
+    // Visualization will be stopped in handleRecordingComplete
+  };
 
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -33,76 +79,76 @@ export function VoiceRecorderButton({ onSend, disabled }: VoiceRecorderButtonPro
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleStartRecording = async () => {
-    setShowRecorder(true);
-    await startRecording();
-  };
-
-  const handleCancel = () => {
-    cancelRecording();
-    setShowRecorder(false);
-  };
-
-  const handleSend = () => {
-    stopRecording();
-  };
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopVisualization();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stopVisualization]);
 
   if (showRecorder) {
     return (
-      <div 
-        className="fixed bottom-20 left-2 right-2 flex items-center gap-2 px-3 py-3 bg-card rounded-xl border shadow-lg animate-in slide-in-from-bottom z-[70]"
-        style={{ 
-          maxWidth: 'calc(100vw - 1rem)',
-          marginBottom: 'env(safe-area-inset-bottom, 0px)'
-        }}
-      >
-        {/* Cancel Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0 text-destructive hover:bg-destructive/20"
-          onClick={handleCancel}
-        >
-          <X className="w-5 h-5" />
-        </Button>
+      <div className="fixed bottom-20 left-2 right-2 z-50 bg-card rounded-2xl shadow-xl border p-4"
+           style={{ bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
+        {error ? (
+          <div className="text-center">
+            <p className="text-destructive text-sm mb-3">{error}</p>
+            <Button variant="outline" onClick={handleCancel}>Close</Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Recording indicator */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-destructive animate-pulse" />
+                <span className="font-medium text-destructive">Recording</span>
+              </div>
+              <span className="font-mono text-lg">{formatDuration(duration)}</span>
+            </div>
 
-        {/* Recording Indicator */}
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="w-3 h-3 rounded-full bg-destructive animate-pulse shrink-0" />
-          <span className="text-sm font-medium text-destructive">
-            {formatDuration(duration)}
-          </span>
-          {error && (
-            <span className="text-xs text-destructive/70 truncate">{error}</span>
-          )}
-        </div>
+            {/* Real-time waveform visualization */}
+            <div className="h-12 flex items-center justify-center gap-[3px] px-4">
+              {levels.map((level, i) => (
+                <div
+                  key={i}
+                  className="w-1 bg-primary rounded-full transition-all duration-75"
+                  style={{ 
+                    height: `${Math.max(4, level * 44)}px`,
+                  }}
+                />
+              ))}
+            </div>
 
-        {/* Waveform visualization */}
-        <div className="flex items-center gap-0.5 h-8 shrink-0">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="w-1 bg-destructive rounded-full transition-all"
-              style={{
-                height: isRecording 
-                  ? `${Math.random() * 20 + 8}px` 
-                  : '4px',
-                animationDelay: `${i * 50}ms`,
-              }}
-            />
-          ))}
-        </div>
+            {/* Controls */}
+            <div className="flex items-center justify-center gap-6">
+              {/* Cancel */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 rounded-full text-destructive hover:bg-destructive/10"
+                onClick={handleCancel}
+              >
+                <Trash2 className="w-5 h-5" />
+              </Button>
 
-        {/* Send Button */}
-        <Button
-          variant="default"
-          size="icon"
-          className="h-9 w-9 shrink-0"
-          onClick={handleSend}
-          disabled={duration < 1}
-        >
-          <Send className="w-4 h-4" />
-        </Button>
+              {/* Stop & Send */}
+              <Button
+                size="icon"
+                className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90"
+                onClick={handleStop}
+              >
+                <Send className="w-6 h-6" />
+              </Button>
+            </div>
+
+            <p className="text-center text-xs text-muted-foreground">
+              Tap send when done • Max 2 minutes
+            </p>
+          </div>
+        )}
       </div>
     );
   }

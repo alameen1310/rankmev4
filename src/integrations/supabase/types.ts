@@ -382,6 +382,7 @@ export type Database = {
           message: string
           message_type: string | null
           receiver_id: string
+          reply_to_id: string | null
           sender_id: string
           status: string | null
           thumbnail_url: string | null
@@ -400,6 +401,7 @@ export type Database = {
           message: string
           message_type?: string | null
           receiver_id: string
+          reply_to_id?: string | null
           sender_id: string
           status?: string | null
           thumbnail_url?: string | null
@@ -418,6 +420,7 @@ export type Database = {
           message?: string
           message_type?: string | null
           receiver_id?: string
+          reply_to_id?: string | null
           sender_id?: string
           status?: string | null
           thumbnail_url?: string | null
@@ -429,6 +432,13 @@ export type Database = {
             columns: ["receiver_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "direct_messages"
             referencedColumns: ["id"]
           },
           {

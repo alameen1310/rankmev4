@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export type MessageType = 'text' | 'gif' | 'image' | 'video' | 'audio';
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 
 export interface ChatMessage {
   id: string;
@@ -18,8 +19,16 @@ export interface ChatMessage {
   width?: number;
   height?: number;
   is_read: boolean;
-  status: 'sent' | 'delivered' | 'read';
+  status: MessageStatus;
   created_at: string;
+  reply_to_id?: string;
+  reply_to?: {
+    id: string;
+    message: string;
+    message_type: MessageType;
+    sender_id: string;
+    sender?: { username: string | null };
+  };
   sender?: {
     id: string;
     username: string | null;
@@ -54,6 +63,7 @@ export async function sendMessage(
     duration?: number;
     width?: number;
     height?: number;
+    replyToId?: string;
   }
 ): Promise<{ success: boolean; message?: ChatMessage; error?: string }> {
   try {
@@ -82,6 +92,7 @@ export async function sendMessage(
         duration: options?.duration,
         width: options?.width,
         height: options?.height,
+        reply_to_id: options?.replyToId,
         is_read: false,
         status: 'sent',
       })
@@ -137,8 +148,10 @@ function mapRowToMessage(row: any): ChatMessage {
     width: row.width ?? undefined,
     height: row.height ?? undefined,
     is_read: row.is_read ?? false,
-    status: (row.status || 'sent') as 'sent' | 'delivered' | 'read',
+    status: (row.status || 'sent') as MessageStatus,
     created_at: row.created_at ?? new Date().toISOString(),
+    reply_to_id: row.reply_to_id ?? undefined,
+    reply_to: row.reply_to ?? undefined,
     sender: row.sender as ChatMessage['sender'],
     reactions: row.reactions || [],
   };

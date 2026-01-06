@@ -119,12 +119,17 @@ export function GifPicker({ onSelect, onClose, className }: GifPickerProps) {
     <div 
       ref={containerRef}
       className={cn(
-        "absolute bottom-12 left-0 w-80 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden animate-scale-in",
+        "fixed bottom-20 left-2 right-2 sm:left-auto sm:right-auto sm:absolute sm:bottom-12 sm:w-80",
+        "bg-card border border-border rounded-xl shadow-xl z-[70] overflow-hidden animate-scale-in",
+        "max-h-[60vh] flex flex-col",
         className
       )}
+      style={{ 
+        maxWidth: 'calc(100vw - 1rem)',
+      }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-border">
+      <div className="flex items-center justify-between p-3 border-b border-border shrink-0">
         <span className="font-semibold text-sm">GIFs</span>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
           <X className="w-4 h-4" />
@@ -132,7 +137,7 @@ export function GifPicker({ onSelect, onClose, className }: GifPickerProps) {
       </div>
 
       {/* Search */}
-      <div className="p-3 border-b border-border">
+      <div className="p-3 border-b border-border shrink-0">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -145,13 +150,13 @@ export function GifPicker({ onSelect, onClose, className }: GifPickerProps) {
       </div>
 
       {/* GIF Grid */}
-      <ScrollArea className="h-64">
+      <ScrollArea className="flex-1 min-h-0">
         {isLoading ? (
-          <div className="flex items-center justify-center h-full py-8">
+          <div className="flex items-center justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="flex items-center justify-center h-full py-8 text-sm text-muted-foreground">
+          <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
             {error}
           </div>
         ) : (
@@ -175,7 +180,7 @@ export function GifPicker({ onSelect, onClose, className }: GifPickerProps) {
       </ScrollArea>
 
       {/* GIPHY Attribution */}
-      <div className="p-2 border-t border-border text-center">
+      <div className="p-2 border-t border-border text-center shrink-0">
         <span className="text-[10px] text-muted-foreground">Powered by GIPHY</span>
       </div>
     </div>

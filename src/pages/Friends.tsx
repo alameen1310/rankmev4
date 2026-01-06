@@ -47,6 +47,7 @@ import { EmojiButton } from '@/components/chat/EmojiButton';
 import { GifButton } from '@/components/chat/GifButton';
 import { VoiceRecorderButton } from '@/components/chat/VoiceRecorderButton';
 import { MediaPicker } from '@/components/chat/MediaPicker';
+import { ImageEditor } from '@/components/chat/ImageEditor';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useMediaUploader } from '@/hooks/useMediaUploader';
 
@@ -76,11 +77,11 @@ export function Friends() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [editingImage, setEditingImage] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const chatChannelRef = useRef<ReturnType<typeof subscribeToMessages> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
   // Typing indicator
   const { isOtherTyping, typingUsername, sendTypingEvent, stopTyping } = useTypingIndicator(
     user?.id,
@@ -307,8 +308,21 @@ export function Friends() {
     }
   };
 
-  // Handle image/video upload
+  // Handle image selection - open editor for images
   const handleMediaSelect = async (file: File, type: 'image' | 'video') => {
+    if (!activeChatFriend || !user) return;
+    
+    if (type === 'image') {
+      // Open image editor
+      setEditingImage(file);
+    } else {
+      // Send video directly
+      await sendMediaFile(file, type);
+    }
+  };
+
+  // Send media file after editing or directly
+  const sendMediaFile = async (file: File, type: 'image' | 'video') => {
     if (!activeChatFriend || !user) return;
     
     try {
@@ -328,6 +342,12 @@ export function Friends() {
       console.error('Error uploading media:', error);
       toast.error(`Failed to send ${type}`);
     }
+  };
+
+  // Handle edited image from ImageEditor
+  const handleImageEdited = async (editedFile: File) => {
+    setEditingImage(null);
+    await sendMediaFile(editedFile, 'image');
   };
 
   const handleAddReaction = async (messageId: string, emoji: string) => {
@@ -501,34 +521,35 @@ export function Friends() {
           </div>
         )}
 
-        {/* Message Input - Fixed at bottom with proper safe area */}
+        {/* Message Input - Compact fixed bottom */}
         <div 
-          className="flex-shrink-0 p-4 border-t bg-card"
-          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          className="flex-shrink-0 px-2 py-2 border-t bg-card"
+          style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
         >
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <MediaPicker
               onSelectImage={(file) => handleMediaSelect(file, 'image')}
               onSelectVideo={(file) => handleMediaSelect(file, 'video')}
               isUploading={isUploading}
               disabled={isSending}
             />
-            <EmojiButton onEmojiSelect={handleEmojiSelect} />
-            <GifButton onGifSelect={handleGifSelect} />
             <Input
               ref={inputRef}
               value={newMessage}
               onChange={handleInputChange}
-              placeholder="Type a message..."
+              placeholder="Message..."
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-              className="flex-1"
+              className="flex-1 min-w-0 h-9 text-base"
               disabled={isUploading}
             />
+            <EmojiButton onEmojiSelect={handleEmojiSelect} />
+            <GifButton onGifSelect={handleGifSelect} />
             {newMessage.trim() ? (
               <Button 
                 onClick={() => handleSendMessage()} 
                 disabled={!newMessage.trim() || isSending || isUploading}
                 size="icon"
+                className="h-8 w-8 shrink-0"
               >
                 {isSending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -544,6 +565,15 @@ export function Friends() {
             )}
           </div>
         </div>
+
+        {/* Image Editor Modal */}
+        {editingImage && (
+          <ImageEditor
+            file={editingImage}
+            onSave={handleImageEdited}
+            onCancel={() => setEditingImage(null)}
+          />
+        )}
       </div>
     );
   }

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { QuizProvider } from "@/contexts/QuizContext";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Index from "./pages/Index";
 import { Login } from "./pages/Login";
@@ -47,6 +48,7 @@ const App = () => (
                 </Route>
               </Routes>
             </BrowserRouter>
+            <SpeedInsights />
           </TooltipProvider>
         </QuizProvider>
       </AuthProvider>

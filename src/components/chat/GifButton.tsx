@@ -27,7 +27,7 @@ export function GifButton({ onGifSelect, className }: GifButtonProps) {
         variant="ghost"
         size="icon"
         onClick={() => setIsOpen(!isOpen)}
-        className="h-9 w-9 text-muted-foreground hover:text-foreground"
+        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
       >
         <span className="text-xs font-bold">GIF</span>
       </Button>

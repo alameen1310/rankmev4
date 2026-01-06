@@ -49,37 +49,43 @@ export function VoiceRecorderButton({ onSend, disabled }: VoiceRecorderButtonPro
 
   if (showRecorder) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-destructive/10 rounded-lg border border-destructive/20 animate-in slide-in-from-left">
+      <div 
+        className="fixed bottom-20 left-2 right-2 flex items-center gap-2 px-3 py-3 bg-card rounded-xl border shadow-lg animate-in slide-in-from-bottom z-[70]"
+        style={{ 
+          maxWidth: 'calc(100vw - 1rem)',
+          marginBottom: 'env(safe-area-inset-bottom, 0px)'
+        }}
+      >
         {/* Cancel Button */}
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-destructive hover:bg-destructive/20"
+          className="h-9 w-9 shrink-0 text-destructive hover:bg-destructive/20"
           onClick={handleCancel}
         >
-          <X className="w-4 h-4" />
+          <X className="w-5 h-5" />
         </Button>
 
         {/* Recording Indicator */}
-        <div className="flex items-center gap-2 flex-1">
-          <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="w-3 h-3 rounded-full bg-destructive animate-pulse shrink-0" />
           <span className="text-sm font-medium text-destructive">
             {formatDuration(duration)}
           </span>
           {error && (
-            <span className="text-xs text-destructive/70">{error}</span>
+            <span className="text-xs text-destructive/70 truncate">{error}</span>
           )}
         </div>
 
-        {/* Waveform visualization placeholder */}
-        <div className="flex items-center gap-0.5 h-6">
-          {Array.from({ length: 12 }).map((_, i) => (
+        {/* Waveform visualization */}
+        <div className="flex items-center gap-0.5 h-8 shrink-0">
+          {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="w-0.5 bg-destructive rounded-full transition-all"
+              className="w-1 bg-destructive rounded-full transition-all"
               style={{
                 height: isRecording 
-                  ? `${Math.random() * 16 + 8}px` 
+                  ? `${Math.random() * 20 + 8}px` 
                   : '4px',
                 animationDelay: `${i * 50}ms`,
               }}
@@ -91,7 +97,7 @@ export function VoiceRecorderButton({ onSend, disabled }: VoiceRecorderButtonPro
         <Button
           variant="default"
           size="icon"
-          className="h-8 w-8 bg-primary hover:bg-primary/90"
+          className="h-9 w-9 shrink-0"
           onClick={handleSend}
           disabled={duration < 1}
         >
@@ -105,7 +111,7 @@ export function VoiceRecorderButton({ onSend, disabled }: VoiceRecorderButtonPro
     <Button
       variant="ghost"
       size="icon"
-      className="shrink-0"
+      className="h-8 w-8 shrink-0"
       onClick={handleStartRecording}
       disabled={disabled}
       title="Record voice note"

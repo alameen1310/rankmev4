@@ -90,7 +90,7 @@ export function MediaPicker({
           <Button
             variant="ghost"
             size="icon"
-            className="shrink-0"
+            className="h-8 w-8 shrink-0"
             disabled={disabled || isUploading}
           >
             {isUploading ? (
@@ -103,7 +103,8 @@ export function MediaPicker({
         <PopoverContent 
           side="top" 
           align="start" 
-          className="w-auto p-2"
+          className="w-auto p-2 z-[70]"
+          sideOffset={8}
         >
           <div className="flex flex-col gap-1">
             {/* Camera */}

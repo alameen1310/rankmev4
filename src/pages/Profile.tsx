@@ -108,8 +108,11 @@ export const Profile = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 Unlock unlimited AI tools, advanced analytics, and ad-free experience
               </p>
-              <Button className="w-full bg-warning text-warning-foreground hover:bg-warning/90 min-h-[48px] shadow-md">
-                Upgrade for $0.99/month
+              <Button 
+                className="w-full bg-warning text-warning-foreground hover:bg-warning/90 min-h-[48px] shadow-md"
+                onClick={() => navigate('/themes')}
+              >
+                Browse Themes & Premium
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>

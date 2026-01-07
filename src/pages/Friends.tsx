@@ -18,7 +18,8 @@ import {
   markMessagesAsRead,
   addReaction,
   removeReaction,
-  type ChatMessage
+  type ChatMessage,
+  type MessageType
 } from '@/services/chat';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -48,6 +49,8 @@ import { GifButton } from '@/components/chat/GifButton';
 import { VoiceRecorderButton } from '@/components/chat/VoiceRecorderButton';
 import { MediaPicker } from '@/components/chat/MediaPicker';
 import { ImageEditor } from '@/components/chat/ImageEditor';
+import { SwipeableMessage } from '@/components/chat/SwipeableMessage';
+import { ReplyPreview } from '@/components/chat/ReplyPreview';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useMediaUploader } from '@/hooks/useMediaUploader';
 
@@ -60,6 +63,14 @@ interface Gif {
   preview: string;
   width: number;
   height: number;
+}
+
+interface ReplyingTo {
+  id: string;
+  message: string;
+  messageType: MessageType;
+  senderName: string;
+  isOwn: boolean;
 }
 
 export function Friends() {
@@ -78,6 +89,7 @@ export function Friends() {
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [editingImage, setEditingImage] = useState<File | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ReplyingTo | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const chatChannelRef = useRef<ReturnType<typeof subscribeToMessages> | null>(null);
@@ -227,6 +239,7 @@ export function Friends() {
     setActiveChatFriend(null);
     setChatMessages([]);
     setNewMessage('');
+    setReplyingTo(null);
   };
 
   const handleSendMessage = async (
@@ -254,12 +267,16 @@ export function Friends() {
         activeChatFriend.id, 
         messageType === 'text' ? newMessage.trim() : '',
         messageType,
-        options
+        {
+          ...options,
+          replyToId: replyingTo?.id,
+        }
       );
       if (!result.success) {
         toast.error(result.error || 'Failed to send message');
       }
       setNewMessage('');
+      setReplyingTo(null);
     } catch (error) {
       console.error('Error sending message:', error);
       const details = error instanceof Error ? error.message : 'Unknown error';
@@ -268,6 +285,22 @@ export function Friends() {
       setIsSending(false);
       inputRef.current?.focus();
     }
+  };
+
+  // Handle swipe to reply
+  const handleSwipeReply = (msg: ChatMessage) => {
+    const senderName = msg.sender_id === user?.id 
+      ? 'You' 
+      : msg.sender?.username || activeChatFriend?.username || 'User';
+    
+    setReplyingTo({
+      id: msg.id,
+      message: msg.message,
+      messageType: msg.message_type,
+      senderName,
+      isOwn: msg.sender_id === user?.id,
+    });
+    inputRef.current?.focus();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -489,24 +522,34 @@ export function Friends() {
               <>
                 <div className="flex-1" />
                 {chatMessages.map(msg => (
-                  <ChatMessageComponent
+                  <SwipeableMessage
                     key={msg.id}
-                    id={msg.id}
-                    message={msg.message}
-                    messageType={msg.message_type}
-                    gifUrl={msg.gif_url}
-                    mediaUrl={msg.media_url}
-                    thumbnailUrl={msg.thumbnail_url}
-                    duration={msg.duration}
-                    width={msg.width}
-                    height={msg.height}
                     isOwn={msg.sender_id === user.id}
-                    timestamp={msg.created_at}
-                    status={msg.status}
-                    reactions={getReactionsForMessage(msg)}
-                    onAddReaction={handleAddReaction}
-                    onRemoveReaction={handleRemoveReaction}
-                  />
+                    onSwipeReply={() => handleSwipeReply(msg)}
+                  >
+                    <ChatMessageComponent
+                      id={msg.id}
+                      message={msg.message}
+                      messageType={msg.message_type}
+                      gifUrl={msg.gif_url}
+                      mediaUrl={msg.media_url}
+                      thumbnailUrl={msg.thumbnail_url}
+                      duration={msg.duration}
+                      width={msg.width}
+                      height={msg.height}
+                      isOwn={msg.sender_id === user.id}
+                      timestamp={msg.created_at}
+                      status={msg.status}
+                      reactions={getReactionsForMessage(msg)}
+                      onAddReaction={handleAddReaction}
+                      onRemoveReaction={handleRemoveReaction}
+                      replyTo={msg.reply_to ? {
+                        message: msg.reply_to.message,
+                        messageType: msg.reply_to.message_type,
+                        senderName: msg.reply_to.sender?.username || 'User',
+                      } : undefined}
+                    />
+                  </SwipeableMessage>
                 ))}
               </>
             )}
@@ -518,6 +561,13 @@ export function Friends() {
         {isOtherTyping && (
           <div className="flex-shrink-0 border-t bg-card/50">
             <TypingIndicator username={typingUsername || activeChatFriend.username || 'User'} />
+          </div>
+        )}
+
+        {/* Reply Preview */}
+        {replyingTo && (
+          <div className="flex-shrink-0 px-2 border-t bg-card">
+            <ReplyPreview replyTo={replyingTo} onCancel={() => setReplyingTo(null)} />
           </div>
         )}
 

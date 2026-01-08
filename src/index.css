@@ -499,45 +499,132 @@
   @apply bg-muted-foreground/40;
 }
 
-/* Page transitions */
-.page-enter {
-  opacity: 0;
-  transform: translateY(8px);
+/* ============ BACKGROUND PATTERNS ============ */
+
+/* Subtle dot pattern */
+.pattern-dots {
+  background-image: radial-gradient(hsl(var(--primary) / 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
-.page-enter-active {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 200ms ease-out, transform 200ms ease-out;
+/* Grid pattern */
+.pattern-grid {
+  background-image: 
+    linear-gradient(hsl(var(--primary) / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--primary) / 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
-.page-exit {
-  opacity: 1;
+/* Geometric circles pattern */
+.pattern-geometric {
+  background-image: 
+    radial-gradient(circle at 20% 30%, hsl(var(--primary) / 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, hsl(var(--accent) / 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, hsl(var(--secondary) / 0.03) 0%, transparent 70%);
 }
 
-.page-exit-active {
-  opacity: 0;
-  transition: opacity 150ms ease-in;
+/* Study doodle pattern */
+.pattern-study {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%234361ee' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 
-/* Focus styles for accessibility */
-*:focus-visible {
-  @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+/* Waves pattern */
+.pattern-waves {
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='20' viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M21.184 20c.357-.13.72-.264.888-.14 1.837 1.266 3.64 2.7 5.358 2.7 1.044 0 2.07-.27 3.128-.54 1.058-.27 2.108-.54 3.152-.54 2.15 0 4.323.94 6.62 1.915 2.335.99 4.8 2.015 7.36 2.015 2.388 0 5.19-1.19 8.093-2.415 2.868-1.21 5.838-2.465 8.447-2.465 1.87 0 3.636.415 5.402.845 1.78.43 3.552.875 5.388.875 3.05 0 5.7-1.02 8.28-2.015 2.605-1.005 5.136-1.985 7.86-1.985 2.09 0 4.24.59 6.318 1.17 2.076.58 4.09 1.15 6.012 1.15 2.19 0 4.315-.57 6.437-1.155 2.12-.585 4.23-1.155 6.383-1.155 2.176 0 4.38.585 6.512 1.155 2.134.57 4.193 1.155 6.268 1.155h.3V0H0v20h21.184z' fill='%234361ee' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
+  background-size: 100px 20px;
 }
 
-/* Active states for touch */
-.active\:scale-down:active {
-  transform: scale(0.97);
+/* Confetti pattern for celebrations */
+.pattern-confetti {
+  background-image: 
+    radial-gradient(circle at 10% 20%, hsl(var(--warning) / 0.15) 0%, transparent 8%),
+    radial-gradient(circle at 30% 60%, hsl(var(--primary) / 0.12) 0%, transparent 6%),
+    radial-gradient(circle at 70% 30%, hsl(var(--success) / 0.1) 0%, transparent 7%),
+    radial-gradient(circle at 90% 70%, hsl(var(--destructive) / 0.08) 0%, transparent 5%),
+    radial-gradient(circle at 50% 90%, hsl(var(--accent) / 0.1) 0%, transparent 9%);
 }
 
-/* Loading skeleton shimmer */
-.skeleton-shimmer {
-  background: linear-gradient(
-    90deg,
-    hsl(var(--muted)) 0%,
-    hsl(var(--muted-foreground) / 0.1) 50%,
-    hsl(var(--muted)) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+/* Trophy/reward decorative pattern */
+.pattern-trophy {
+  background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23fbbf24' fill-opacity='0.04'%3E%3Cpath d='M40 40c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10zm0 2c-6.627 0-12-5.373-12-12s5.373-12 12-12 12 5.373 12 12-5.373 12-12 12z'/%3E%3Cpath d='M40 58v10h-6v2h14v-2h-6V58a18.003 18.003 0 0 0 15.62-15.62l1.89-.316a2 2 0 0 0 .49-3.774V34a2 2 0 0 0-2-2h-4v-6h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-.49-3.774l-1.89-.316A18.003 18.003 0 0 0 48 0h-2v2a6 6 0 0 1-12 0V0h-2a18.003 18.003 0 0 0-15.62 15.91l-1.89.316A2 2 0 0 0 14 20v4a2 2 0 0 0 2 2h4v6h-4a2 2 0 0 0-2 2v4.29a2 2 0 0 0 .49 3.774l1.89.316A18.003 18.003 0 0 0 32 58h8z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ============ ANIMATED BACKGROUNDS ============ */
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animated-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Sparkle animation for premium elements */
+@keyframes sparkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+/* ============ DECORATIVE DOODLES ============ */
+
+.doodle-books::before {
+  content: '📚';
+  position: absolute;
+  font-size: 3rem;
+  opacity: 0.1;
+  top: -0.5rem;
+  right: -0.5rem;
+}
+
+.doodle-trophy::before {
+  content: '🏆';
+  position: absolute;
+  font-size: 3rem;
+  opacity: 0.1;
+  top: -0.5rem;
+  right: -0.5rem;
+}
+
+.doodle-fire::before {
+  content: '🔥';
+  position: absolute;
+  font-size: 3rem;
+  opacity: 0.1;
+  top: -0.5rem;
+  right: -0.5rem;
+}
+
+/* ============ TIER GLOW EFFECTS ============ */
+
+.tier-bronze-glow {
+  box-shadow: 0 0 20px hsl(30 61% 50% / 0.3);
+}
+
+.tier-silver-glow {
+  box-shadow: 0 0 20px hsl(0 0% 72% / 0.4);
+}
+
+.tier-gold-glow {
+  box-shadow: 0 0 25px hsl(43 96% 56% / 0.4);
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+.tier-platinum-glow {
+  box-shadow: 0 0 30px hsl(0 0% 82% / 0.5);
+}
+
+.tier-diamond-glow {
+  box-shadow: 0 0 35px hsl(189 80% 68% / 0.5);
+  animation: glow 1.5s ease-in-out infinite alternate;
+}
+
+.tier-champion-glow {
+  box-shadow: 0 0 40px hsl(280 100% 70% / 0.4), 0 0 60px hsl(43 96% 56% / 0.2);
+  animation: glow 1s ease-in-out infinite alternate;
 }

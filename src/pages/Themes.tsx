@@ -1,28 +1,39 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Crown, Sparkles, Lock, Gift } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Sparkles, Lock, Gift, Snowflake, Leaf, Sun, Flower2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePremium } from '@/contexts/PremiumContext';
-import { PremiumTheme } from '@/themes/themeDefinitions';
+import { PremiumTheme, isThemeAvailable } from '@/themes/themeDefinitions';
 
-type ThemeCategory = 'all' | 'vibrant' | 'pastel' | 'dark' | 'minimal';
+type ThemeCategory = 'all' | 'vibrant' | 'pastel' | 'dark' | 'minimal' | 'neon' | 'nature' | 'seasonal';
+
+const getCategoryIcon = (category: string) => {
+  switch (category) {
+    case 'seasonal': return <Snowflake className="w-3.5 h-3.5" />;
+    case 'nature': return <Leaf className="w-3.5 h-3.5" />;
+    case 'neon': return <Sparkles className="w-3.5 h-3.5" />;
+    default: return null;
+  }
+};
 
 export function Themes() {
   const navigate = useNavigate();
   const { premiumTheme, setPremiumTheme, availableThemes } = useTheme();
   const { isPremium, isDevMode } = usePremium();
   const [selectedCategory, setSelectedCategory] = useState<ThemeCategory>('all');
-  const [previewTheme, setPreviewTheme] = useState<PremiumTheme | null>(null);
 
   const categories: { id: ThemeCategory; label: string; emoji: string }[] = [
     { id: 'all', label: 'All', emoji: '✨' },
     { id: 'vibrant', label: 'Vibrant', emoji: '🔥' },
     { id: 'pastel', label: 'Pastel', emoji: '🌸' },
     { id: 'dark', label: 'Dark', emoji: '🌙' },
+    { id: 'neon', label: 'Neon', emoji: '💫' },
+    { id: 'nature', label: 'Nature', emoji: '🌿' },
+    { id: 'seasonal', label: 'Seasonal', emoji: '🎄' },
     { id: 'minimal', label: 'Minimal', emoji: '⚪' },
   ];
 
@@ -32,7 +43,10 @@ export function Themes() {
 
   const handleSelectTheme = (theme: PremiumTheme) => {
     if (theme.type === 'premium' && !isPremium && !isDevMode) {
-      // Show upgrade prompt
+      return;
+    }
+    // Check if seasonal theme is available
+    if (theme.seasonal && !isThemeAvailable(theme) && !isDevMode) {
       return;
     }
     setPremiumTheme(theme.id);
@@ -67,7 +81,7 @@ export function Themes() {
               App Themes
             </h1>
             <p className="text-sm text-muted-foreground">
-              Personalize your experience
+              {availableThemes.length} themes available
             </p>
           </div>
         </div>
@@ -92,49 +106,58 @@ export function Themes() {
         </div>
 
         {/* Current Theme Preview */}
-        <Card className="p-4 bg-gradient-to-br from-card via-card to-muted/30 border-primary/20">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="text-2xl">{premiumTheme.emoji}</div>
-            <div className="flex-1">
-              <p className="font-semibold">{premiumTheme.name}</p>
-              <p className="text-xs text-muted-foreground capitalize">Current theme • {premiumTheme.category}</p>
-            </div>
-            <Badge variant="outline" className="capitalize">
-              {premiumTheme.type}
-            </Badge>
-          </div>
+        <Card className="p-4 bg-gradient-to-br from-card via-card to-muted/30 border-primary/20 relative overflow-hidden">
+          {/* Decorative pattern */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: `radial-gradient(circle at 25% 25%, currentColor 1px, transparent 1px),
+                              radial-gradient(circle at 75% 75%, currentColor 1px, transparent 1px)`,
+            backgroundSize: '24px 24px',
+          }} />
           
-          {/* Color Preview */}
-          <div className="flex gap-1.5 mb-3">
-            <div 
-              className="w-10 h-10 rounded-lg shadow-sm ring-1 ring-border/50"
-              style={{ background: premiumTheme.preview.primary }}
-            />
-            <div 
-              className="w-10 h-10 rounded-lg shadow-sm ring-1 ring-border/50"
-              style={{ background: premiumTheme.preview.secondary }}
-            />
-            <div 
-              className="w-10 h-10 rounded-lg shadow-sm ring-1 ring-border/50"
-              style={{ background: premiumTheme.preview.accent }}
-            />
-            <div 
-              className="w-10 h-10 rounded-lg shadow-sm ring-1 ring-border/50"
-              style={{ background: premiumTheme.preview.background }}
-            />
-          </div>
-
-          {/* Mini Chat Preview */}
-          <div className="bg-background rounded-lg p-3 space-y-2">
-            <div className="flex gap-2">
-              <div className="w-6 h-6 rounded-full bg-muted shrink-0" />
-              <div className="bg-muted rounded-2xl rounded-tl-md px-3 py-1.5 text-sm max-w-[70%]">
-                Hey! How's studying going? 📚
+          <div className="relative">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="text-2xl">{premiumTheme.emoji}</div>
+              <div className="flex-1">
+                <p className="font-semibold">{premiumTheme.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">Current theme • {premiumTheme.category}</p>
               </div>
+              <Badge variant="outline" className="capitalize">
+                {premiumTheme.type}
+              </Badge>
             </div>
-            <div className="flex gap-2 justify-end">
-              <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-md px-3 py-1.5 text-sm max-w-[70%]">
-                Great! Just scored 95% 🎉
+            
+            {/* Color Preview */}
+            <div className="flex gap-1.5 mb-3">
+              <div 
+                className="w-10 h-10 rounded-lg shadow-sm ring-1 ring-border/50"
+                style={{ background: premiumTheme.preview.primary }}
+              />
+              <div 
+                className="w-10 h-10 rounded-lg shadow-sm ring-1 ring-border/50"
+                style={{ background: premiumTheme.preview.secondary }}
+              />
+              <div 
+                className="w-10 h-10 rounded-lg shadow-sm ring-1 ring-border/50"
+                style={{ background: premiumTheme.preview.accent }}
+              />
+              <div 
+                className="w-10 h-10 rounded-lg shadow-sm ring-1 ring-border/50"
+                style={{ background: premiumTheme.preview.background }}
+              />
+            </div>
+
+            {/* Mini Chat Preview */}
+            <div className="bg-background rounded-lg p-3 space-y-2">
+              <div className="flex gap-2">
+                <div className="w-6 h-6 rounded-full bg-muted shrink-0" />
+                <div className="bg-muted rounded-2xl rounded-tl-md px-3 py-1.5 text-sm max-w-[70%]">
+                  Hey! How's studying going? 📚
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-md px-3 py-1.5 text-sm max-w-[70%]">
+                  Great! Just scored 95% 🎉
+                </div>
               </div>
             </div>
           </div>
@@ -145,30 +168,47 @@ export function Themes() {
           {filteredThemes.map(theme => {
             const isActive = theme.id === premiumTheme.id;
             const canUse = theme.type === 'free' || isPremium || isDevMode;
+            const isSeasonalAvailable = !theme.seasonal || isThemeAvailable(theme) || isDevMode;
+            const isAvailable = canUse && isSeasonalAvailable;
             
             return (
               <button
                 key={theme.id}
-                onClick={() => canUse && handleSelectTheme(theme)}
+                onClick={() => isAvailable && handleSelectTheme(theme)}
                 className={cn(
                   "relative p-3 rounded-xl text-left transition-all border-2",
                   isActive 
                     ? "border-primary bg-primary/5 shadow-md" 
-                    : canUse
+                    : isAvailable
                       ? "border-border hover:border-primary/50 hover:shadow-sm bg-card"
-                      : "border-border bg-card opacity-75"
+                      : "border-border bg-card opacity-60"
                 )}
               >
-                {/* Premium Badge */}
-                {theme.type === 'premium' && (
-                  <div className="absolute -top-1.5 -right-1.5 z-10">
-                    {canUse ? (
-                      <div className="w-5 h-5 rounded-full bg-gradient-to-br from-warning to-amber-400 flex items-center justify-center shadow-sm">
-                        <Crown className="w-3 h-3 text-white" />
+                {/* Premium/Seasonal Badge */}
+                {(theme.type === 'premium' || theme.seasonal) && (
+                  <div className="absolute -top-1.5 -right-1.5 z-10 flex gap-0.5">
+                    {theme.seasonal && (
+                      <div className={cn(
+                        "w-5 h-5 rounded-full flex items-center justify-center shadow-sm",
+                        isSeasonalAvailable ? "bg-gradient-to-br from-cyan-400 to-blue-500" : "bg-muted"
+                      )}>
+                        {isSeasonalAvailable ? (
+                          <Snowflake className="w-3 h-3 text-white" />
+                        ) : (
+                          <Lock className="w-3 h-3 text-muted-foreground" />
+                        )}
                       </div>
-                    ) : (
-                      <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center shadow-sm">
-                        <Lock className="w-3 h-3 text-muted-foreground" />
+                    )}
+                    {theme.type === 'premium' && !theme.seasonal && (
+                      <div className={cn(
+                        "w-5 h-5 rounded-full flex items-center justify-center shadow-sm",
+                        canUse ? "bg-gradient-to-br from-warning to-amber-400" : "bg-muted"
+                      )}>
+                        {canUse ? (
+                          <Crown className="w-3 h-3 text-white" />
+                        ) : (
+                          <Lock className="w-3 h-3 text-muted-foreground" />
+                        )}
                       </div>
                     )}
                   </div>
@@ -209,14 +249,20 @@ export function Themes() {
                   />
                 </div>
 
-                {/* Category Tag */}
-                <div className="mt-2">
+                {/* Category & Seasonal Tag */}
+                <div className="mt-2 flex items-center gap-1">
                   <span className={cn(
-                    "text-xs px-2 py-0.5 rounded-full capitalize",
+                    "text-xs px-2 py-0.5 rounded-full capitalize flex items-center gap-1",
                     theme.isDark ? "bg-foreground/10 text-foreground/70" : "bg-muted text-muted-foreground"
                   )}>
+                    {getCategoryIcon(theme.category)}
                     {theme.category}
                   </span>
+                  {theme.seasonal && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600">
+                      {theme.seasonal.available}
+                    </span>
+                  )}
                 </div>
               </button>
             );

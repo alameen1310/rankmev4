@@ -17,7 +17,7 @@ export const Dashboard = () => {
   const weeklyProgress = 65;
 
   return (
-    <div className="min-h-screen pb-4">
+    <div className="min-h-screen pb-4 pattern-geometric">
       {/* Welcome Section */}
       <section className="relative overflow-hidden px-4 py-5">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-warning/5" />

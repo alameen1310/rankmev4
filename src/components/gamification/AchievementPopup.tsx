@@ -39,7 +39,7 @@ export const AchievementPopup = ({ badge, onClose }: AchievementPopupProps) => {
 
   return (
     <>
-      {showConfetti && <Confetti />}
+      <Confetti isActive={showConfetti} />
       
       <div 
         className={cn(

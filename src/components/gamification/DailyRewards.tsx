@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Gift, Clock, Sparkles, Check, Lock } from 'lucide-react';
+import { Gift, Clock, Sparkles, Check, Lock, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { WEEKLY_REWARDS, rollMysteryBox, type MysteryBoxReward, RARITY_COLORS } from '@/services/gamification';
-import { useStreak } from '@/hooks/useStreak';
+import { WEEKLY_REWARDS, RARITY_COLORS, rollMysteryBox, type MysteryBoxReward } from '@/services/gamification';
+import { useDailyRewards } from '@/hooks/useDailyRewards';
 import { cn } from '@/lib/utils';
 import { Confetti } from '@/components/Confetti';
 import { toast } from '@/hooks/use-toast';
@@ -12,8 +12,19 @@ interface DailyRewardsProps {
 }
 
 export const DailyRewards = ({ className }: DailyRewardsProps) => {
-  const { streakData, claimDailyReward, getNextReward, isUpdating } = useStreak();
+  const { 
+    streak, 
+    weekProgress, 
+    todayClaimed, 
+    claimDailyReward,
+    getTimeUntilReset,
+  } = useDailyRewards();
+  
   const [showConfetti, setShowConfetti] = useState(false);
+  const [isClaming, setIsClaiming] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<string>('');
+  
+  // Mystery box state
   const [mysteryBoxAvailable, setMysteryBoxAvailable] = useState(true);
   const [mysteryBoxCooldown, setMysteryBoxCooldown] = useState<Date | null>(null);
   const [isOpeningBox, setIsOpeningBox] = useState(false);
@@ -33,8 +44,8 @@ export const DailyRewards = ({ className }: DailyRewardsProps) => {
     }
   }, []);
 
-  // Countdown timer
-  const [timeLeft, setTimeLeft] = useState<string>('');
+  // Mystery box countdown timer
+  const [boxTimeLeft, setBoxTimeLeft] = useState<string>('');
   useEffect(() => {
     if (!mysteryBoxCooldown) return;
 
@@ -54,18 +65,38 @@ export const DailyRewards = ({ className }: DailyRewardsProps) => {
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+      setBoxTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
     }, 1000);
 
     return () => clearInterval(timer);
   }, [mysteryBoxCooldown]);
 
+  // Daily reward countdown timer
+  useEffect(() => {
+    if (!todayClaimed) return;
+
+    const timer = setInterval(() => {
+      const reset = getTimeUntilReset();
+      if (reset) {
+        setTimeLeft(`${reset.hours.toString().padStart(2, '0')}:${reset.minutes.toString().padStart(2, '0')}:${reset.seconds.toString().padStart(2, '0')}`);
+      } else {
+        setTimeLeft('');
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [todayClaimed, getTimeUntilReset]);
+
   const handleClaimDaily = async () => {
+    if (todayClaimed || isClaming) return;
+    
+    setIsClaiming(true);
     const reward = await claimDailyReward();
     if (reward) {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 3000);
     }
+    setIsClaiming(false);
   };
 
   const handleOpenMysteryBox = async () => {
@@ -111,8 +142,7 @@ export const DailyRewards = ({ className }: DailyRewardsProps) => {
     }, 3000);
   };
 
-  const currentWeekDay = (streakData.currentStreak % 7) || 7;
-  const nextReward = getNextReward();
+  const currentWeekDay = (streak % 7) || 7;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -127,42 +157,45 @@ export const DailyRewards = ({ className }: DailyRewardsProps) => {
             </div>
             <div>
               <h3 className="font-semibold text-sm">Daily Rewards</h3>
-              <p className="text-xs text-muted-foreground">
-                Day {currentWeekDay} of 7
-              </p>
+              <div className="flex items-center gap-1">
+                <span className="text-2xl">🔥</span>
+                <span className="text-xs font-bold text-warning">{streak} day streak</span>
+              </div>
             </div>
           </div>
           
-          <Button
-            size="sm"
-            onClick={handleClaimDaily}
-            disabled={streakData.todayClaimed || isUpdating}
-            className={cn(
-              "transition-all",
-              streakData.todayClaimed 
-                ? "bg-success/20 text-success" 
-                : "bg-primary hover:bg-primary/90"
-            )}
-          >
-            {streakData.todayClaimed ? (
-              <>
-                <Check className="h-4 w-4 mr-1" />
-                Claimed
-              </>
-            ) : isUpdating ? (
-              'Claiming...'
+          <div className="text-right">
+            {todayClaimed ? (
+              <div className="space-y-1">
+                <div className="flex items-center gap-1 text-success">
+                  <Check className="h-4 w-4" />
+                  <span className="text-xs font-medium">Claimed!</span>
+                </div>
+                {timeLeft && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Next in {timeLeft}
+                  </p>
+                )}
+              </div>
             ) : (
-              'Claim'
+              <Button
+                size="sm"
+                onClick={handleClaimDaily}
+                disabled={isClaming}
+                className="bg-gradient-to-r from-warning to-orange-500 hover:from-warning/90 hover:to-orange-500/90 text-white animate-pulse"
+              >
+                {isClaming ? 'Claiming...' : 'Claim Reward!'}
+              </Button>
             )}
-          </Button>
+          </div>
         </div>
 
         {/* Weekly Progress */}
         <div className="grid grid-cols-7 gap-1.5">
           {WEEKLY_REWARDS.map((reward, index) => {
             const dayNum = index + 1;
-            const isClaimed = dayNum < currentWeekDay || (dayNum === currentWeekDay && streakData.todayClaimed);
-            const isToday = dayNum === currentWeekDay && !streakData.todayClaimed;
+            const isClaimed = dayNum < currentWeekDay || (dayNum === currentWeekDay && todayClaimed);
+            const isToday = dayNum === currentWeekDay && !todayClaimed;
             const isLocked = dayNum > currentWeekDay;
 
             return (
@@ -171,18 +204,18 @@ export const DailyRewards = ({ className }: DailyRewardsProps) => {
                 className={cn(
                   "relative flex flex-col items-center p-2 rounded-lg transition-all",
                   isClaimed && "bg-success/20",
-                  isToday && "bg-primary/20 ring-2 ring-primary ring-offset-1",
+                  isToday && "bg-gradient-to-br from-warning/30 to-orange-500/30 ring-2 ring-warning ring-offset-1 ring-offset-background",
                   isLocked && "opacity-50",
-                  reward.isSpecial && "bg-gradient-to-br from-warning/20 to-orange-500/20"
+                  reward.isSpecial && !isClaimed && !isToday && "bg-gradient-to-br from-primary/10 to-warning/10"
                 )}
               >
                 <span className="text-[10px] text-muted-foreground mb-1">
                   Day {dayNum}
                 </span>
                 <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-lg",
+                  "w-8 h-8 rounded-full flex items-center justify-center text-lg relative",
                   isClaimed && "bg-success/30",
-                  isToday && "bg-primary/30 animate-pulse",
+                  isToday && "bg-warning/30 animate-pulse",
                   reward.isSpecial && "ring-2 ring-warning/50"
                 )}>
                   {isClaimed ? (
@@ -190,14 +223,19 @@ export const DailyRewards = ({ className }: DailyRewardsProps) => {
                   ) : isLocked ? (
                     <Lock className="h-3 w-3 text-muted-foreground" />
                   ) : (
-                    reward.icon
+                    <>
+                      {reward.icon}
+                      {reward.isSpecial && (
+                        <Star className="h-2.5 w-2.5 text-warning absolute -top-0.5 -right-0.5 fill-warning" />
+                      )}
+                    </>
                   )}
                 </div>
-                <span className="text-[9px] mt-1 text-center">
+                <span className="text-[9px] mt-1 text-center font-medium">
                   {reward.reward.type === 'points' ? (
                     `+${reward.reward.value}`
                   ) : (
-                    'Boost'
+                    <span className="text-primary">Boost</span>
                   )}
                 </span>
               </div>
@@ -205,11 +243,15 @@ export const DailyRewards = ({ className }: DailyRewardsProps) => {
           })}
         </div>
 
-        {nextReward && (
-          <p className="text-xs text-center text-muted-foreground mt-3">
-            Next milestone reward in {nextReward.daysUntil} day{nextReward.daysUntil > 1 ? 's' : ''}
-          </p>
-        )}
+        {/* Streak milestone hint */}
+        <div className="mt-3 pt-3 border-t border-border/50">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">
+              {streak >= 7 ? '🏆 Weekly streak complete!' : `${7 - (streak % 7)} days to weekly bonus`}
+            </span>
+            <span className="font-bold text-warning">+500 pts</span>
+          </div>
+        </div>
       </div>
 
       {/* Mystery Box */}
@@ -227,7 +269,7 @@ export const DailyRewards = ({ className }: DailyRewardsProps) => {
               className={cn(
                 "flex-1 py-6 rounded-xl bg-gradient-to-br from-primary/20 via-warning/20 to-primary/20",
                 "flex flex-col items-center gap-2 transition-all",
-                "hover:scale-[1.02] hover:shadow-lg",
+                "hover:scale-[1.02] hover:shadow-lg hover:from-primary/30 hover:via-warning/30 hover:to-primary/30",
                 isOpeningBox && "animate-bounce"
               )}
             >
@@ -246,7 +288,7 @@ export const DailyRewards = ({ className }: DailyRewardsProps) => {
               <span className="text-5xl opacity-50">🎁</span>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Clock className="h-4 w-4" />
-                <span className="text-sm font-mono">{timeLeft}</span>
+                <span className="text-sm font-mono">{boxTimeLeft}</span>
               </div>
               <span className="text-xs text-muted-foreground">until next box</span>
             </div>

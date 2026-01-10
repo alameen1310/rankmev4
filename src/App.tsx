@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { QuizProvider } from "@/contexts/QuizContext";
 import { PremiumProvider } from "@/contexts/PremiumContext";
+import { AchievementProvider } from "@/components/gamification/AchievementPopup";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Index from "./pages/Index";
 import { Login } from "./pages/Login";
@@ -29,9 +30,10 @@ const App = () => (
       <PremiumProvider>
         <AuthProvider>
           <QuizProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
+            <AchievementProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
               <BrowserRouter>
                 <Routes>
                   <Route element={<AppLayout />}>
@@ -51,7 +53,8 @@ const App = () => (
                   </Route>
                 </Routes>
               </BrowserRouter>
-            </TooltipProvider>
+              </TooltipProvider>
+            </AchievementProvider>
           </QuizProvider>
         </AuthProvider>
       </PremiumProvider>

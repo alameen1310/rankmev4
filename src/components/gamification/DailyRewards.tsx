@@ -116,7 +116,7 @@ export const DailyRewards = ({ className }: DailyRewardsProps) => {
 
   return (
     <div className={cn("space-y-4", className)}>
-      {showConfetti && <Confetti />}
+      <Confetti isActive={showConfetti} />
 
       {/* Daily Login Streak */}
       <div className="glass rounded-2xl p-4">

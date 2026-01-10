@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Trophy, Target, Zap, TrendingUp, ChevronRight, Flame, Share2 } from 'lucide-react';
+import { Trophy, Target, Zap, TrendingUp, ChevronRight, Flame, Share2, Gift, Medal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { TierBadge } from '@/components/TierBadge';
@@ -8,6 +8,9 @@ import { StatCard } from '@/components/StatCard';
 import { CircularProgress } from '@/components/CircularProgress';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { TierProgress } from '@/components/gamification/TierProgress';
+import { DailyRewards } from '@/components/gamification/DailyRewards';
+import { BadgeCollection } from '@/components/gamification/BadgeCollection';
 
 export const Dashboard = () => {
   const { profile, isAuthenticated } = useAuth();
@@ -98,6 +101,13 @@ export const Dashboard = () => {
         </div>
       </section>
 
+      {/* Tier Progress */}
+      <section className="px-4 py-2">
+        <div className="max-w-lg mx-auto">
+          <TierProgress points={profile.total_points} compact />
+        </div>
+      </section>
+
       {/* Quick Actions */}
       <section className="px-4 py-3">
         <div className="max-w-lg mx-auto">
@@ -130,6 +140,20 @@ export const Dashboard = () => {
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </div>
           </Link>
+        </div>
+      </section>
+
+      {/* Daily Rewards & Mystery Box */}
+      <section className="px-4 py-3">
+        <div className="max-w-lg mx-auto">
+          <DailyRewards />
+        </div>
+      </section>
+
+      {/* Badge Collection Preview */}
+      <section className="px-4 py-3 pb-8">
+        <div className="max-w-lg mx-auto">
+          <BadgeCollection compact />
         </div>
       </section>
     </div>

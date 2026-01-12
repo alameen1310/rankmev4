@@ -1,12 +1,12 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Trophy, Zap, Swords, Users, User } from 'lucide-react';
+import { Home, Trophy, Zap, Swords, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/dashboard', icon: Home, label: 'Home' },
   { to: '/pvp', icon: Swords, label: 'PvP' },
   { to: '/quiz', icon: Zap, label: 'Quiz' },
-  { to: '/friends', icon: Users, label: 'Friends' },
+  { to: '/gamification', icon: Star, label: 'Rewards' },
   { to: '/leaderboard', icon: Trophy, label: 'Ranks' },
 ];
 

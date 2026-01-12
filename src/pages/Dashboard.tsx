@@ -151,9 +151,27 @@ export const Dashboard = () => {
       </section>
 
       {/* Badge Collection Preview */}
-      <section className="px-4 py-3 pb-8">
+      <section className="px-4 py-3">
         <div className="max-w-lg mx-auto">
           <BadgeCollection compact />
+        </div>
+      </section>
+
+      {/* View All Rewards Link */}
+      <section className="px-4 py-3 pb-8">
+        <div className="max-w-lg mx-auto">
+          <Link to="/gamification">
+            <div className="glass rounded-xl p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Gift className="h-5 w-5 text-warning" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">View All Rewards</p>
+                <p className="text-xs text-muted-foreground">Badges, Challenges & Titles</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </Link>
         </div>
       </section>
     </div>

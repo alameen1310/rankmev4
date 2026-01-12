@@ -20,6 +20,7 @@ import { PvPLobby } from "./pages/PvPLobby";
 import { BattleScreen } from "./pages/BattleScreen";
 import { Friends } from "./pages/Friends";
 import { Themes } from "./pages/Themes";
+import { Gamification } from "./pages/Gamification";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
                     <Route path="/battle/:battleId" element={<BattleScreen />} />
                     <Route path="/friends" element={<Friends />} />
                     <Route path="/themes" element={<Themes />} />
+                    <Route path="/gamification" element={<Gamification />} />
                     <Route path="*" element={<NotFound />} />
                   </Route>
                 </Routes>

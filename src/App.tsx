@@ -23,6 +23,7 @@ import { Friends } from "./pages/Friends";
 import { Themes } from "./pages/Themes";
 import { Gamification } from "./pages/Gamification";
 import { Notifications } from "./pages/Notifications";
+import { PublicProfile } from "./pages/PublicProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
                       <Route path="/themes" element={<Themes />} />
                       <Route path="/gamification" element={<Gamification />} />
                       <Route path="/notifications" element={<Notifications />} />
+                      <Route path="/user/:userId" element={<PublicProfile />} />
                       <Route path="*" element={<NotFound />} />
                     </Route>
                   </Routes>

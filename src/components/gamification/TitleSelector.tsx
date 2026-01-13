@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Crown, ChevronRight, Lock, Check } from 'lucide-react';
 import { TITLES, type Title } from '@/services/gamification';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGameState } from '@/contexts/GameStateContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,8 +20,8 @@ interface TitleSelectorProps {
 
 export const TitleSelector = ({ className }: TitleSelectorProps) => {
   const { profile } = useAuth();
+  const { state, setEquippedTitle } = useGameState();
   const [selectedTitle, setSelectedTitle] = useState<Title | null>(null);
-  const [activeTitle, setActiveTitle] = useState<Title | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Title['category'] | 'all'>('all');
 
@@ -41,19 +42,10 @@ export const TitleSelector = ({ className }: TitleSelectorProps) => {
         return false;
     }
   }).map(t => t.id);
-
-  // Set initial active title
-  useEffect(() => {
-    const savedTitleId = localStorage.getItem('activeTitle');
-    if (savedTitleId) {
-      const title = TITLES.find(t => t.id === savedTitleId);
-      if (title && earnedTitleIds.includes(title.id)) {
-        setActiveTitle(title);
-      }
-    } else if (earnedTitleIds.length > 0) {
-      setActiveTitle(TITLES.find(t => t.id === earnedTitleIds[0]) || null);
-    }
-  }, [earnedTitleIds]);
+  // Get active title from game state
+  const activeTitle = state.equippedTitle 
+    ? TITLES.find(t => t.name === state.equippedTitle || t.id === state.equippedTitle)
+    : null;
 
   const categories: { id: Title['category'] | 'all'; label: string; icon: string }[] = [
     { id: 'all', label: 'All', icon: '📋' },
@@ -79,8 +71,8 @@ export const TitleSelector = ({ className }: TitleSelectorProps) => {
       return;
     }
 
-    setActiveTitle(selectedTitle);
-    localStorage.setItem('activeTitle', selectedTitle.id);
+    // Update in GameStateContext (which saves to localStorage)
+    setEquippedTitle(selectedTitle.name);
     setDialogOpen(false);
     
     toast({

@@ -1,4 +1,5 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { TierBadge } from '@/components/TierBadge';
 import { cn } from '@/lib/utils';
@@ -11,6 +12,15 @@ interface LeaderboardRowProps {
 }
 
 export const LeaderboardRow = ({ entry, isCurrentUser, className }: LeaderboardRowProps) => {
+  const navigate = useNavigate();
+  
+  const handleClick = () => {
+    // Don't navigate for demo/fallback entries (numeric IDs are mock data)
+    if (entry.id && isNaN(Number(entry.id))) {
+      navigate(`/user/${entry.id}`);
+    }
+  };
+
   const getRankDisplay = (rank: number) => {
     if (rank === 1) return <span className="text-xl">🥇</span>;
     if (rank === 2) return <span className="text-xl">🥈</span>;
@@ -38,14 +48,20 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className }: LeaderboardR
     return <Minus className="h-3 w-3 text-muted-foreground" />;
   };
 
+  const isClickable = entry.id && isNaN(Number(entry.id));
+  
   return (
     <div
+      onClick={handleClick}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
       className={cn(
         "flex items-center gap-3 p-3 rounded-xl transition-all duration-200 touch-target",
         isCurrentUser 
           ? "bg-primary/10 dark:bg-primary/15 border-2 border-primary/30" 
           : "glass hover:bg-accent/50 active:scale-[0.99]",
         entry.rank <= 3 && !isCurrentUser && "bg-gradient-to-r from-warning/5 to-transparent",
+        isClickable && "cursor-pointer",
         className
       )}
     >

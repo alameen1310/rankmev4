@@ -1,13 +1,18 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Settings, LogOut, Trophy, Zap, Calendar, ChevronRight, Share2 } from 'lucide-react';
+import { Settings, LogOut, Trophy, Zap, Calendar, ChevronRight, Share2, Star, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { TierBadge } from '@/components/TierBadge';
 import { CircularProgress } from '@/components/CircularProgress';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGameState } from '@/contexts/GameStateContext';
+import { BadgeShowcase } from '@/components/gamification/BadgeShowcase';
+import { StreakCounter } from '@/components/StreakCounter';
+import { cn } from '@/lib/utils';
 
 export const Profile = () => {
   const { profile, signOut } = useAuth();
+  const { state } = useGameState();
   const navigate = useNavigate();
 
   if (!profile) return null;
@@ -35,9 +40,17 @@ export const Profile = () => {
             </div>
           </div>
 
-          <h1 className="text-xl font-bold mb-0.5">{profile.username || 'User'}</h1>
+          <h1 className="text-xl font-bold mb-0.5">
+            {profile.username || 'User'}
+            {state.equippedTitle && (
+              <span className="text-primary font-normal text-base ml-2">
+                • {state.equippedTitle}
+              </span>
+            )}
+          </h1>
           <p className="text-sm text-muted-foreground mb-4">
             🌍 {profile.country || 'Global'} • {profile.tier} tier
+            {state.rank && <> • Rank #{state.rank.toLocaleString()}</>}
           </p>
 
           <div className="flex justify-center gap-2">
@@ -91,6 +104,38 @@ export const Profile = () => {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Badge Showcase */}
+      <section className="px-4 py-3">
+        <div className="max-w-lg mx-auto">
+          <BadgeShowcase editable />
+        </div>
+      </section>
+
+      {/* Streak Counter */}
+      <section className="px-4 py-3">
+        <div className="max-w-lg mx-auto">
+          <StreakCounter streak={profile.current_streak} />
+        </div>
+      </section>
+
+      {/* View Rewards */}
+      <section className="px-4 py-3">
+        <div className="max-w-lg mx-auto">
+          <Link to="/gamification">
+            <div className="glass rounded-xl p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Gift className="h-5 w-5 text-warning" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">View All Rewards</p>
+                <p className="text-xs text-muted-foreground">Badges, Challenges & Titles</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </Link>
         </div>
       </section>
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import type { Question, QuizResult, Subject } from '@/types';
 import { getQuestionsBySubjectSlug, submitQuizSession } from '@/services/quiz';
 import { getQuestionsBySubject as getMockQuestions } from '@/data/mockData';
@@ -14,6 +14,8 @@ interface QuizState {
   isComplete: boolean;
   isLoading: boolean;
   subject: Subject | null;
+  pointsAwarded: boolean;
+  sessionId: string | null;
 }
 
 interface QuizContextType {
@@ -37,6 +39,8 @@ const initialState: QuizState = {
   isComplete: false,
   isLoading: false,
   subject: null,
+  pointsAwarded: false,
+  sessionId: null,
 };
 
 const QuizContext = createContext<QuizContextType | undefined>(undefined);
@@ -56,8 +60,15 @@ const subjectNameMap: Record<Subject, string> = {
 export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<QuizState>(initialState);
   const { user, refreshProfile } = useAuth();
+  
+  // Use ref to prevent double submission
+  const isSubmittingRef = useRef(false);
+  const submittedSessionsRef = useRef<Set<string>>(new Set());
 
   const startQuiz = useCallback(async (subject: Subject) => {
+    // Generate unique session ID for this quiz attempt
+    const sessionId = `quiz_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
     setState(prev => ({ ...prev, isLoading: true }));
     
     try {
@@ -85,6 +96,8 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isComplete: false,
         isLoading: false,
         subject,
+        pointsAwarded: false,
+        sessionId,
       });
     } catch (error) {
       console.error('Error starting quiz:', error);
@@ -100,6 +113,8 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isComplete: false,
         isLoading: false,
         subject,
+        pointsAwarded: false,
+        sessionId,
       });
     }
   }, []);
@@ -158,9 +173,34 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [state]);
 
   const submitResults = useCallback(async () => {
+    // CRITICAL: Prevent double submission
     if (!user || !state.subject || state.questions.length === 0) {
       console.log('Cannot submit: missing user, subject, or questions');
       return;
+    }
+
+    // Check if already submitting
+    if (isSubmittingRef.current) {
+      console.log('Already submitting, skipping duplicate call');
+      return;
+    }
+
+    // Check if this session was already submitted
+    if (state.sessionId && submittedSessionsRef.current.has(state.sessionId)) {
+      console.log('Session already submitted:', state.sessionId);
+      return;
+    }
+
+    // Check if points already awarded
+    if (state.pointsAwarded) {
+      console.log('Points already awarded for this quiz');
+      return;
+    }
+
+    // Set lock
+    isSubmittingRef.current = true;
+    if (state.sessionId) {
+      submittedSessionsRef.current.add(state.sessionId);
     }
 
     const { questions, answers, times } = state;
@@ -190,13 +230,28 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
       
       console.log('Quiz submitted successfully:', result);
+      
+      // Mark points as awarded
+      setState(prev => ({ ...prev, pointsAwarded: true }));
+      
       toast.success(`+${result.score} points earned!`);
       
       // Refresh the user profile to update points in UI
       await refreshProfile();
+      
+      // Broadcast event for global state sync
+      window.dispatchEvent(new CustomEvent('quiz-completed', { 
+        detail: { score: result.score, accuracy: result.accuracy } 
+      }));
     } catch (error) {
       console.error('Error submitting quiz results:', error);
+      // Remove from submitted sessions on error so user can retry
+      if (state.sessionId) {
+        submittedSessionsRef.current.delete(state.sessionId);
+      }
       toast.error('Failed to save your results. Please try again.');
+    } finally {
+      isSubmittingRef.current = false;
     }
   }, [user, state, refreshProfile]);
 

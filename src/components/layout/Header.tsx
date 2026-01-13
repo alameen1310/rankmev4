@@ -2,12 +2,14 @@ import { Link } from 'react-router-dom';
 import { Bell, Sun, Moon, Trophy } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGameState } from '@/contexts/GameStateContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export const Header = () => {
   const { theme, toggleTheme } = useTheme();
   const { profile, isAuthenticated } = useAuth();
+  const { unreadCount } = useGameState();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border/50 safe-top">
@@ -38,10 +40,16 @@ export const Header = () => {
 
           {isAuthenticated && (
             <>
-              <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 relative touch-target">
-                <Bell className="h-5 w-5 text-muted-foreground" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />
-              </Button>
+              <Link to="/notifications">
+                <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 relative touch-target">
+                  <Bell className="h-5 w-5 text-muted-foreground" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </Link>
 
               <Link to="/profile">
                 <Avatar className="h-9 w-9 border-2 border-primary/50 transition-all hover:border-primary hover:scale-105">

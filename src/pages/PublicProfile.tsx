@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trophy, Zap, Calendar, Target, Users, Swords } from 'lucide-react';
+import { ArrowLeft, Trophy, Zap, Target, UserPlus, Swords, MessageCircle, Check, Clock, UserMinus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { TierBadge } from '@/components/TierBadge';
@@ -10,6 +10,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { getUserBadges, type UserBadge } from '@/services/badges';
 import { getUserRank, getTierFromPoints } from '@/services/leaderboard';
 import { BADGES, TITLES, RARITY_COLORS } from '@/services/gamification';
+import { sendFriendRequest, getFriends } from '@/services/friends';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Tier } from '@/types';
 
@@ -32,9 +35,13 @@ interface PublicProfileData {
   equippedTitle: string | null;
 }
 
+type RelationshipStatus = 'none' | 'friends' | 'pending_sent' | 'pending_received';
+
 export const PublicProfile = () => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   
   const [profile, setProfile] = useState<PublicUserProfile | null>(null);
   const [publicData, setPublicData] = useState<PublicProfileData>({ showcaseBadges: [], equippedTitle: null });
@@ -42,12 +49,99 @@ export const PublicProfile = () => {
   const [rank, setRank] = useState<{ rank: number; percentile: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [relationshipStatus, setRelationshipStatus] = useState<RelationshipStatus>('none');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  
+  const isOwnProfile = user?.id === userId;
 
   useEffect(() => {
     if (userId) {
       fetchPublicProfile();
+      if (user?.id && userId !== user.id) {
+        checkRelationshipStatus();
+      }
     }
-  }, [userId]);
+  }, [userId, user?.id]);
+
+  const checkRelationshipStatus = async () => {
+    if (!user?.id || !userId) return;
+    
+    try {
+      // Check if already friends
+      const friends = await getFriends(user.id);
+      if (friends.some(f => f.id === userId)) {
+        setRelationshipStatus('friends');
+        return;
+      }
+      
+      // Check for pending friend requests
+      const { data: sentRequest } = await supabase
+        .from('friend_requests')
+        .select('id, status')
+        .eq('from_user_id', user.id)
+        .eq('to_user_id', userId)
+        .eq('status', 'pending')
+        .maybeSingle();
+      
+      if (sentRequest) {
+        setRelationshipStatus('pending_sent');
+        return;
+      }
+      
+      const { data: receivedRequest } = await supabase
+        .from('friend_requests')
+        .select('id, status')
+        .eq('from_user_id', userId)
+        .eq('to_user_id', user.id)
+        .eq('status', 'pending')
+        .maybeSingle();
+      
+      if (receivedRequest) {
+        setRelationshipStatus('pending_received');
+        return;
+      }
+      
+      setRelationshipStatus('none');
+    } catch (err) {
+      console.error('Error checking relationship:', err);
+    }
+  };
+
+  const handleSendFriendRequest = async () => {
+    if (!user?.id || !userId) return;
+    
+    setActionLoading('friend');
+    try {
+      await sendFriendRequest(user.id, userId);
+      setRelationshipStatus('pending_sent');
+      toast({
+        title: 'Friend Request Sent!',
+        description: `Request sent to ${profile?.display_name || profile?.username}`,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Failed to send request',
+        description: err.message || 'Please try again later',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleChallengeToBattle = async () => {
+    if (!user?.id || !userId) return;
+    
+    // Navigate to PvP lobby with friend challenge mode
+    navigate('/pvp-lobby', { state: { challengeFriendId: userId, challengeFriendName: profile?.display_name || profile?.username } });
+  };
+
+  const handleSendMessage = () => {
+    if (!userId) return;
+    
+    // Navigate to friends page with chat open
+    navigate('/friends', { state: { openChatWith: userId } });
+  };
 
   const fetchPublicProfile = async () => {
     if (!userId) return;
@@ -242,6 +336,88 @@ export const PublicProfile = () => {
               <span className="text-xs text-muted-foreground">
                 (Top {rank.percentile.toFixed(1)}%)
               </span>
+            </div>
+          )}
+
+          {/* Social Action Buttons */}
+          {user && !isOwnProfile && (
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              {/* Friend Request Button */}
+              {relationshipStatus === 'none' && (
+                <Button
+                  size="sm"
+                  onClick={handleSendFriendRequest}
+                  disabled={actionLoading === 'friend'}
+                  className="gap-2"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Add Friend
+                </Button>
+              )}
+              
+              {relationshipStatus === 'pending_sent' && (
+                <Button size="sm" variant="secondary" disabled className="gap-2">
+                  <Clock className="h-4 w-4" />
+                  Request Sent
+                </Button>
+              )}
+              
+              {relationshipStatus === 'pending_received' && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => navigate('/notifications')}
+                  className="gap-2"
+                >
+                  <Check className="h-4 w-4" />
+                  Respond to Request
+                </Button>
+              )}
+              
+              {relationshipStatus === 'friends' && (
+                <Button size="sm" variant="outline" disabled className="gap-2">
+                  <Check className="h-4 w-4 text-success" />
+                  Friends
+                </Button>
+              )}
+              
+              {/* Challenge to Battle Button */}
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleChallengeToBattle}
+                className="gap-2"
+              >
+                <Swords className="h-4 w-4" />
+                Challenge
+              </Button>
+              
+              {/* Send Message Button (only if friends) */}
+              {relationshipStatus === 'friends' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSendMessage}
+                  className="gap-2"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Message
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* View Own Profile Button */}
+          {isOwnProfile && (
+            <div className="mt-4">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate('/profile')}
+                className="gap-2"
+              >
+                Edit Profile
+              </Button>
             </div>
           )}
         </div>

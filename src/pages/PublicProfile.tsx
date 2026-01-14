@@ -191,35 +191,56 @@ export const PublicProfile = () => {
         setRank({ rank: userRank.rank, percentile: userRank.percentile });
       }
       
-      // For now, showcase badges and title are stored in a simple way
-      // In production, you'd have a public_profile_settings table
-      // Here we'll calculate earned titles and show top badges
-      const showcaseBadgeIds = badges.slice(0, 3).map(b => b.badge.name.toLowerCase().replace(/\s+/g, '-'));
+      // Fetch showcase badges and title from localStorage for the user being viewed
+      // Since we can't access another user's localStorage, we need to store this in DB
+      // For now, we'll use their earned badges as showcase and calculate best title
       
-      // Calculate equipped title from earned titles
-      const earnedTitles = TITLES.filter(title => {
-        switch (title.requirement.type) {
-          case 'points':
-            return userProfile.total_points >= title.requirement.value;
-          case 'streak':
-            return userProfile.current_streak >= title.requirement.value;
-          case 'quizzes':
-            return userProfile.total_quizzes_completed >= title.requirement.value;
-          case 'accuracy':
-            return userProfile.accuracy >= title.requirement.value;
-          default:
-            return false;
-        }
-      });
+      // Try to get showcase from our own storage if viewing own profile
+      let savedShowcaseBadges: string[] = [];
+      let savedEquippedTitle: string | null = null;
       
-      // Get highest tier title
-      const equippedTitle = earnedTitles.length > 0 
-        ? earnedTitles.sort((a, b) => b.requirement.value - a.requirement.value)[0]?.name 
-        : null;
+      if (user?.id === userId) {
+        // Viewing own profile - use localStorage
+        try {
+          const savedBadges = localStorage.getItem('rankme_showcase_badges');
+          if (savedBadges) {
+            savedShowcaseBadges = JSON.parse(savedBadges);
+          }
+          savedEquippedTitle = localStorage.getItem('rankme_equipped_title') || null;
+        } catch {}
+      }
+      
+      // If no saved showcase or viewing someone else, use top 3 earned badges
+      if (savedShowcaseBadges.length === 0) {
+        savedShowcaseBadges = badges.slice(0, 3).map(b => b.badge.name.toLowerCase().replace(/\s+/g, '-'));
+      }
+      
+      // Calculate equipped title from earned titles if not set
+      if (!savedEquippedTitle) {
+        const earnedTitles = TITLES.filter(title => {
+          switch (title.requirement.type) {
+            case 'points':
+              return userProfile.total_points >= title.requirement.value;
+            case 'streak':
+              return userProfile.current_streak >= title.requirement.value;
+            case 'quizzes':
+              return userProfile.total_quizzes_completed >= title.requirement.value;
+            case 'accuracy':
+              return userProfile.accuracy >= title.requirement.value;
+            default:
+              return false;
+          }
+        });
+        
+        // Get highest tier title
+        savedEquippedTitle = earnedTitles.length > 0 
+          ? earnedTitles.sort((a, b) => b.requirement.value - a.requirement.value)[0]?.name 
+          : null;
+      }
       
       setPublicData({
-        showcaseBadges: showcaseBadgeIds,
-        equippedTitle,
+        showcaseBadges: savedShowcaseBadges,
+        equippedTitle: savedEquippedTitle,
       });
       
     } catch (err) {

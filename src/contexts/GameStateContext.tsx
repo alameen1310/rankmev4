@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tier } from '@/types';
 import { getTierFromPoints } from '@/services/leaderboard';
+import { trackingService, TRACKING_EVENTS } from '@/services/trackingService';
 
 interface GameState {
   streak: number;
@@ -68,7 +69,7 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        return { ...defaultState, ...JSON.parse(saved) };
       } catch {
         return defaultState;
       }
@@ -93,6 +94,18 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Sync state with profile when it changes
   useEffect(() => {
     if (profile) {
+      // Set user ID for tracking service
+      trackingService.setUserId(profile.id);
+      
+      // Sync with tracking service
+      trackingService.syncWithProfile({
+        current_streak: profile.current_streak,
+        longest_streak: profile.longest_streak,
+        total_points: profile.total_points,
+        weekly_points: profile.weekly_points,
+        tier: profile.tier,
+      });
+      
       setState(prev => ({
         ...prev,
         streak: profile.current_streak,
@@ -103,6 +116,56 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }));
     }
   }, [profile]);
+
+  // Listen for tracking service events for cross-component sync
+  useEffect(() => {
+    const handleStreakUpdate = (e: CustomEvent) => {
+      setState(prev => ({
+        ...prev,
+        streak: e.detail.currentStreak,
+        longestStreak: e.detail.longestStreak,
+      }));
+    };
+
+    const handlePointsUpdate = (e: CustomEvent) => {
+      setState(prev => ({
+        ...prev,
+        totalPoints: e.detail.total,
+        weeklyPoints: e.detail.weekly,
+      }));
+    };
+
+    const handleRankUpdate = (e: CustomEvent) => {
+      setState(prev => ({
+        ...prev,
+        tier: e.detail.tier,
+        rank: e.detail.globalRank,
+        percentile: e.detail.percentile,
+      }));
+    };
+
+    const handleBadgesUpdate = (e: CustomEvent) => {
+      setState(prev => ({ ...prev, showcaseBadges: e.detail }));
+    };
+
+    const handleTitleUpdate = (e: CustomEvent) => {
+      setState(prev => ({ ...prev, equippedTitle: e.detail }));
+    };
+
+    window.addEventListener(TRACKING_EVENTS.STREAK_UPDATED, handleStreakUpdate as EventListener);
+    window.addEventListener(TRACKING_EVENTS.POINTS_UPDATED, handlePointsUpdate as EventListener);
+    window.addEventListener(TRACKING_EVENTS.RANK_UPDATED, handleRankUpdate as EventListener);
+    window.addEventListener(TRACKING_EVENTS.BADGES_UPDATED, handleBadgesUpdate as EventListener);
+    window.addEventListener(TRACKING_EVENTS.TITLE_UPDATED, handleTitleUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener(TRACKING_EVENTS.STREAK_UPDATED, handleStreakUpdate as EventListener);
+      window.removeEventListener(TRACKING_EVENTS.POINTS_UPDATED, handlePointsUpdate as EventListener);
+      window.removeEventListener(TRACKING_EVENTS.RANK_UPDATED, handleRankUpdate as EventListener);
+      window.removeEventListener(TRACKING_EVENTS.BADGES_UPDATED, handleBadgesUpdate as EventListener);
+      window.removeEventListener(TRACKING_EVENTS.TITLE_UPDATED, handleTitleUpdate as EventListener);
+    };
+  }, []);
 
   // Save state to localStorage
   useEffect(() => {
@@ -132,11 +195,14 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
       
       if (data && data.length > 0) {
+        const rankData = data[0];
         setState(prev => ({
           ...prev,
-          rank: data[0].rank,
-          percentile: data[0].percentile,
+          rank: rankData.rank,
+          percentile: rankData.percentile,
         }));
+        // Sync with tracking service
+        trackingService.updateRank(rankData.rank, rankData.percentile);
       }
     } catch (error) {
       console.error('Error fetching rank:', error);
@@ -146,6 +212,7 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const refreshGameState = useCallback(async () => {
     await refreshProfile();
     await fetchUserRank();
+    await trackingService.forceRefreshFromDatabase();
   }, [refreshProfile]);
 
   const updateStreak = useCallback((newStreak: number) => {
@@ -171,16 +238,19 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       rank,
       percentile,
     }));
+    // Sync with tracking service
+    trackingService.updateRank(rank, percentile);
   }, []);
 
   const setShowcaseBadges = useCallback((badges: string[]) => {
+    const limitedBadges = badges.slice(0, 3);
     setState(prev => ({
       ...prev,
-      showcaseBadges: badges.slice(0, 3), // Max 3 badges
+      showcaseBadges: limitedBadges,
     }));
     
-    // Save to localStorage for persistence
-    localStorage.setItem('rankme_showcase_badges', JSON.stringify(badges.slice(0, 3)));
+    // Sync with tracking service
+    trackingService.setShowcaseBadges(limitedBadges);
   }, []);
 
   const setEquippedTitle = useCallback((title: string | null) => {
@@ -189,8 +259,8 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       equippedTitle: title,
     }));
     
-    // Save to localStorage
-    localStorage.setItem('rankme_equipped_title', title || '');
+    // Sync with tracking service
+    trackingService.setEquippedTitle(title);
   }, []);
 
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'createdAt'>) => {

@@ -400,19 +400,43 @@ class TrackingService {
   }
 
   // ============= Badge Showcase Management =============
-  setShowcaseBadges(badges: string[]): void {
+  async setShowcaseBadges(badges: string[]): Promise<void> {
     this.state.showcaseBadges = badges.slice(0, 3);
     localStorage.setItem(STORAGE_KEYS.SHOWCASE_BADGES, JSON.stringify(this.state.showcaseBadges));
     this.saveState();
     this.broadcast(TRACKING_EVENTS.BADGES_UPDATED, this.state.showcaseBadges);
+    
+    // Sync with database
+    if (this.userId) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ showcase_badges: this.state.showcaseBadges })
+          .eq('id', this.userId);
+      } catch (e) {
+        console.error('Error syncing showcase badges to database:', e);
+      }
+    }
   }
 
   // ============= Title Management =============
-  setEquippedTitle(title: string | null): void {
+  async setEquippedTitle(title: string | null): Promise<void> {
     this.state.equippedTitle = title;
     localStorage.setItem(STORAGE_KEYS.EQUIPPED_TITLE, title || '');
     this.saveState();
     this.broadcast(TRACKING_EVENTS.TITLE_UPDATED, title);
+    
+    // Sync with database
+    if (this.userId) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ equipped_title: title })
+          .eq('id', this.userId);
+      } catch (e) {
+        console.error('Error syncing equipped title to database:', e);
+      }
+    }
   }
 
   // ============= Event Broadcasting =============

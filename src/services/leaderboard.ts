@@ -12,6 +12,9 @@ export interface LeaderboardProfile {
   current_streak: number | null;
   accuracy: number | null;
   total_quizzes_completed: number | null;
+  // Public display fields
+  equipped_title: string | null;
+  showcase_badges: string[] | null;
 }
 
 export interface LeaderboardEntryWithProfile {
@@ -62,6 +65,9 @@ function profileToLeaderboardEntry(
     countryFlag: getCountryFlag(profile.country),
     change,
     changeAmount: previousRank ? Math.abs(rank - previousRank) : undefined,
+    // Public display fields
+    equippedTitle: profile.equipped_title,
+    showcaseBadges: profile.showcase_badges || [],
   };
 }
 
@@ -69,7 +75,7 @@ export async function getGlobalLeaderboard(limit: number = 50): Promise<Leaderbo
   // Fetch from profiles ordered by total_points (real global leaderboard)
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id, username, display_name, avatar_url, country, tier, total_points, current_streak, accuracy, total_quizzes_completed, equipped_title, showcase_badges')
     .gt('total_points', 0)
     .order('total_points', { ascending: false })
     .limit(limit);
@@ -97,13 +103,15 @@ export async function getGlobalLeaderboard(limit: number = 50): Promise<Leaderbo
     current_streak: profile.current_streak,
     accuracy: profile.accuracy ? Number(profile.accuracy) : null,
     total_quizzes_completed: profile.total_quizzes_completed,
+    equipped_title: profile.equipped_title,
+    showcase_badges: profile.showcase_badges,
   }, index + 1));
 }
 
 export async function getWeeklyLeaderboard(limit: number = 50): Promise<LeaderboardEntry[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id, username, display_name, avatar_url, country, tier, weekly_points, current_streak, accuracy, total_quizzes_completed, equipped_title, showcase_badges')
     .gt('weekly_points', 0)
     .order('weekly_points', { ascending: false })
     .limit(limit);
@@ -124,6 +132,8 @@ export async function getWeeklyLeaderboard(limit: number = 50): Promise<Leaderbo
     current_streak: profile.current_streak,
     accuracy: profile.accuracy ? Number(profile.accuracy) : null,
     total_quizzes_completed: profile.total_quizzes_completed,
+    equipped_title: profile.equipped_title,
+    showcase_badges: profile.showcase_badges,
   }, index + 1));
 }
 
@@ -133,7 +143,7 @@ export async function getCountryLeaderboard(
 ): Promise<LeaderboardEntry[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id, username, display_name, avatar_url, country, tier, total_points, current_streak, accuracy, total_quizzes_completed, equipped_title, showcase_badges')
     .eq('country', countryCode)
     .gt('total_points', 0)
     .order('total_points', { ascending: false })
@@ -155,6 +165,8 @@ export async function getCountryLeaderboard(
     current_streak: profile.current_streak,
     accuracy: profile.accuracy ? Number(profile.accuracy) : null,
     total_quizzes_completed: profile.total_quizzes_completed,
+    equipped_title: profile.equipped_title,
+    showcase_badges: profile.showcase_badges,
   }, index + 1));
 }
 
@@ -182,7 +194,7 @@ export async function getUserRank(userId: string): Promise<{ rank: number; total
 export async function getUserProfile(userId: string): Promise<LeaderboardProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id, username, display_name, avatar_url, country, tier, total_points, current_streak, accuracy, total_quizzes_completed, equipped_title, showcase_badges')
     .eq('id', userId)
     .maybeSingle();
   
@@ -204,6 +216,8 @@ export async function getUserProfile(userId: string): Promise<LeaderboardProfile
     current_streak: data.current_streak,
     accuracy: data.accuracy ? Number(data.accuracy) : null,
     total_quizzes_completed: data.total_quizzes_completed,
+    equipped_title: data.equipped_title,
+    showcase_badges: data.showcase_badges,
   };
 }
 
@@ -214,13 +228,15 @@ export async function updateUserProfile(
     display_name: string;
     avatar_url: string;
     country: string;
+    equipped_title: string | null;
+    showcase_badges: string[];
   }>
 ): Promise<LeaderboardProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
     .update(updates)
     .eq('id', userId)
-    .select()
+    .select('id, username, display_name, avatar_url, country, tier, total_points, current_streak, accuracy, total_quizzes_completed, equipped_title, showcase_badges')
     .single();
   
   if (error) {
@@ -239,6 +255,8 @@ export async function updateUserProfile(
     current_streak: data.current_streak,
     accuracy: data.accuracy ? Number(data.accuracy) : null,
     total_quizzes_completed: data.total_quizzes_completed,
+    equipped_title: data.equipped_title,
+    showcase_badges: data.showcase_badges,
   };
 }
 

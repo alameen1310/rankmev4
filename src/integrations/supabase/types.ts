@@ -654,9 +654,11 @@ export type Database = {
           created_at: string | null
           current_streak: number | null
           display_name: string | null
+          equipped_title: string | null
           id: string
           last_active_date: string | null
           longest_streak: number | null
+          showcase_badges: string[] | null
           tier: string | null
           total_correct_answers: number | null
           total_points: number | null
@@ -673,9 +675,11 @@ export type Database = {
           created_at?: string | null
           current_streak?: number | null
           display_name?: string | null
+          equipped_title?: string | null
           id: string
           last_active_date?: string | null
           longest_streak?: number | null
+          showcase_badges?: string[] | null
           tier?: string | null
           total_correct_answers?: number | null
           total_points?: number | null
@@ -692,9 +696,11 @@ export type Database = {
           created_at?: string | null
           current_streak?: number | null
           display_name?: string | null
+          equipped_title?: string | null
           id?: string
           last_active_date?: string | null
           longest_streak?: number | null
+          showcase_badges?: string[] | null
           tier?: string | null
           total_correct_answers?: number | null
           total_points?: number | null

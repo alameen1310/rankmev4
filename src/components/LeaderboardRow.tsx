@@ -3,15 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { TierBadge } from '@/components/TierBadge';
 import { cn } from '@/lib/utils';
+import { BADGES } from '@/services/gamification';
+import { TITLES } from '@/services/gamification';
 import type { LeaderboardEntry } from '@/types';
 
 interface LeaderboardRowProps {
   entry: LeaderboardEntry;
   isCurrentUser?: boolean;
   className?: string;
+  showBadges?: boolean;
 }
 
-export const LeaderboardRow = ({ entry, isCurrentUser, className }: LeaderboardRowProps) => {
+export const LeaderboardRow = ({ entry, isCurrentUser, className, showBadges = true }: LeaderboardRowProps) => {
   const navigate = useNavigate();
   
   const handleClick = () => {
@@ -48,6 +51,24 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className }: LeaderboardR
     return <Minus className="h-3 w-3 text-muted-foreground" />;
   };
 
+  // Get title display
+  const getEquippedTitle = () => {
+    if (!entry.equippedTitle) return null;
+    const title = TITLES.find(t => t.name === entry.equippedTitle || t.id === entry.equippedTitle);
+    return title;
+  };
+
+  // Get showcase badges
+  const getShowcaseBadges = () => {
+    if (!entry.showcaseBadges || entry.showcaseBadges.length === 0) return [];
+    return entry.showcaseBadges
+      .map(badgeId => BADGES.find(b => b.id === badgeId || b.name.toLowerCase().replace(/\s+/g, '-') === badgeId))
+      .filter(Boolean)
+      .slice(0, 3);
+  };
+
+  const equippedTitle = getEquippedTitle();
+  const showcaseBadges = getShowcaseBadges();
   const isClickable = entry.id && isNaN(Number(entry.id));
   
   return (
@@ -81,7 +102,7 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className }: LeaderboardR
       <div className="flex-1 min-w-0 overflow-hidden">
         <div className="flex items-center gap-2">
           <span className={cn(
-            "font-semibold truncate max-w-[120px]",
+            "font-semibold truncate max-w-[100px]",
             isCurrentUser && "text-primary"
           )}>
             {entry.username}
@@ -91,10 +112,31 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className }: LeaderboardR
               YOU
             </span>
           )}
+          {/* Equipped Title */}
+          {equippedTitle && (
+            <span className="shrink-0 text-[10px] bg-accent text-accent-foreground px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5">
+              <span>{equippedTitle.icon}</span>
+              <span className="hidden sm:inline truncate max-w-[60px]">{equippedTitle.name}</span>
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <span className="shrink-0">{entry.countryFlag}</span>
           <TierBadge tier={entry.tier} size="sm" showLabel={false} />
+          {/* Showcase Badges - inline mini display */}
+          {showBadges && showcaseBadges.length > 0 && (
+            <div className="flex items-center gap-0.5 ml-1">
+              {showcaseBadges.map((badge, idx) => (
+                <span 
+                  key={idx} 
+                  className="text-xs" 
+                  title={badge?.name}
+                >
+                  {badge?.icon}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

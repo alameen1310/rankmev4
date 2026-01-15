@@ -696,13 +696,34 @@ export function Friends() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">
-                        {friend.display_name || friend.username}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold truncate">
+                          {friend.display_name || friend.username}
+                        </p>
+                        {friend.equipped_title && (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                            {friend.equipped_title}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         {friend.tier && <TierBadge tier={friend.tier as any} size="sm" />}
                         <span>{friend.total_points?.toLocaleString() || 0} pts</span>
                       </div>
+                      {/* Showcase Badges */}
+                      {friend.showcase_badges && friend.showcase_badges.length > 0 && (
+                        <div className="flex items-center gap-1 mt-1.5">
+                          {friend.showcase_badges.slice(0, 3).map((badgeName, idx) => (
+                            <span 
+                              key={idx} 
+                              className="text-xs px-1.5 py-0.5 rounded bg-accent text-accent-foreground"
+                              title={badgeName}
+                            >
+                              🏆 {badgeName.length > 10 ? badgeName.slice(0, 10) + '...' : badgeName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <Button 
@@ -807,12 +828,33 @@ export function Friends() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">
-                        {searchUser.display_name || searchUser.username}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold truncate">
+                          {searchUser.display_name || searchUser.username}
+                        </p>
+                        {searchUser.equipped_title && (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                            {searchUser.equipped_title}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         {searchUser.tier && <TierBadge tier={searchUser.tier as any} size="sm" />}
                       </div>
+                      {/* Showcase Badges */}
+                      {searchUser.showcase_badges && searchUser.showcase_badges.length > 0 && (
+                        <div className="flex items-center gap-1 mt-1.5">
+                          {searchUser.showcase_badges.slice(0, 3).map((badgeName, idx) => (
+                            <span 
+                              key={idx} 
+                              className="text-xs px-1.5 py-0.5 rounded bg-accent text-accent-foreground"
+                              title={badgeName}
+                            >
+                              🏆 {badgeName.length > 10 ? badgeName.slice(0, 10) + '...' : badgeName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <Button 
                       variant="default" 

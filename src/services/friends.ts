@@ -8,6 +8,8 @@ export interface FriendProfile {
   country: string | null;
   tier: string | null;
   total_points: number | null;
+  equipped_title: string | null;
+  showcase_badges: string[] | null;
 }
 
 export interface FriendRequest {
@@ -24,7 +26,7 @@ export interface FriendRequest {
 export async function searchUsers(query: string, currentUserId: string): Promise<FriendProfile[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, country, tier, total_points')
+    .select('id, username, display_name, avatar_url, country, tier, total_points, equipped_title, showcase_badges')
     .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
     .neq('id', currentUserId)
     .limit(10);
@@ -87,7 +89,7 @@ export async function getPendingFriendRequests(userId: string): Promise<FriendRe
   if (fromUserIds.length > 0) {
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, username, display_name, avatar_url, country, tier, total_points')
+      .select('id, username, display_name, avatar_url, country, tier, total_points, equipped_title, showcase_badges')
       .in('id', fromUserIds);
     
     const profileMap = new Map((profiles || []).map(p => [p.id, p]));
@@ -178,7 +180,7 @@ export async function getFriends(userId: string): Promise<FriendProfile[]> {
   // Get friend profiles
   const { data: profiles, error: profileError } = await supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, country, tier, total_points')
+    .select('id, username, display_name, avatar_url, country, tier, total_points, equipped_title, showcase_badges')
     .in('id', friendIds)
     .order('total_points', { ascending: false });
   

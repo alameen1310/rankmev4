@@ -37,6 +37,9 @@ export interface LeaderboardEntry {
   countryFlag: string;
   change: 'up' | 'down' | 'same';
   changeAmount?: number;
+  // Public display fields
+  equippedTitle?: string | null;
+  showcaseBadges?: string[];
 }
 
 export interface Question {

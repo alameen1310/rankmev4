@@ -25,6 +25,11 @@ import { Gamification } from "./pages/Gamification";
 import { Notifications } from "./pages/Notifications";
 import { PublicProfile } from "./pages/PublicProfile";
 import AdminQuestions from "./pages/AdminQuestions";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AddQuestion from "./pages/admin/AddQuestion";
+import ManageQuestions from "./pages/admin/ManageQuestions";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminSettings from "./pages/admin/AdminSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,7 +63,12 @@ const App = () => (
                       <Route path="/gamification" element={<Gamification />} />
                       <Route path="/notifications" element={<Notifications />} />
                       <Route path="/user/:userId" element={<PublicProfile />} />
+                      <Route path="/admin" element={<AdminDashboard />} />
                       <Route path="/admin/questions" element={<AdminQuestions />} />
+                      <Route path="/admin/add-question" element={<AddQuestion />} />
+                      <Route path="/admin/manage" element={<ManageQuestions />} />
+                      <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                      <Route path="/admin/settings" element={<AdminSettings />} />
                       <Route path="*" element={<NotFound />} />
                     </Route>
                   </Routes>

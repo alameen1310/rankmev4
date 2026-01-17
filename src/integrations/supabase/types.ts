@@ -653,6 +653,7 @@ export type Database = {
           accuracy: number | null
           avatar_url: string | null
           bank_name: string | null
+          chat_streak: number | null
           country: string | null
           created_at: string | null
           current_streak: number | null
@@ -660,6 +661,7 @@ export type Database = {
           equipped_title: string | null
           id: string
           last_active_date: string | null
+          last_chat_date: string | null
           longest_streak: number | null
           showcase_badges: string[] | null
           tier: string | null
@@ -677,6 +679,7 @@ export type Database = {
           accuracy?: number | null
           avatar_url?: string | null
           bank_name?: string | null
+          chat_streak?: number | null
           country?: string | null
           created_at?: string | null
           current_streak?: number | null
@@ -684,6 +687,7 @@ export type Database = {
           equipped_title?: string | null
           id: string
           last_active_date?: string | null
+          last_chat_date?: string | null
           longest_streak?: number | null
           showcase_badges?: string[] | null
           tier?: string | null
@@ -701,6 +705,7 @@ export type Database = {
           accuracy?: number | null
           avatar_url?: string | null
           bank_name?: string | null
+          chat_streak?: number | null
           country?: string | null
           created_at?: string | null
           current_streak?: number | null
@@ -708,6 +713,7 @@ export type Database = {
           equipped_title?: string | null
           id?: string
           last_active_date?: string | null
+          last_chat_date?: string | null
           longest_streak?: number | null
           showcase_badges?: string[] | null
           tier?: string | null
@@ -1116,6 +1122,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_chat_streak: { Args: { user_uuid: string }; Returns: undefined }
       update_user_streak: { Args: { user_uuid: string }; Returns: undefined }
     }
     Enums: {

@@ -22,12 +22,15 @@ import {
   Calendar,
   Edit,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Bell,
+  Loader2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
+import { calculateTier } from '@/lib/tierUtils';
 
 interface UserProfile {
   id: string;
@@ -170,10 +173,14 @@ export const UserManagement = () => {
         return;
       }
 
+      // Calculate new tier based on points
+      const newTier = calculateTier(points);
+
       const { error } = await supabase
         .from('profiles')
         .update({ 
           total_points: points,
+          tier: newTier,
           updated_at: new Date().toISOString(),
         })
         .eq('id', selectedUser.id);
@@ -182,7 +189,7 @@ export const UserManagement = () => {
 
       toast({
         title: 'Points updated!',
-        description: `${selectedUser.username}'s points set to ${points.toLocaleString()}`,
+        description: `${selectedUser.username}'s points set to ${points.toLocaleString()} (${newTier} tier)`,
       });
       setShowEditRankDialog(false);
       loadUsers();
@@ -198,12 +205,13 @@ export const UserManagement = () => {
 
   const resetLeaderboard = async () => {
     try {
-      // Reset all users' points
+      // Reset all users' points and tier
       const { error: profilesError } = await supabase
         .from('profiles')
         .update({ 
           total_points: 0,
           weekly_points: 0,
+          tier: 'bronze',
           updated_at: new Date().toISOString(),
         })
         .neq('id', '00000000-0000-0000-0000-000000000000'); // Update all
@@ -238,6 +246,59 @@ export const UserManagement = () => {
     }
   };
 
+  const [sendingNotification, setSendingNotification] = useState(false);
+
+  const sendBankDetailsNotification = async () => {
+    setSendingNotification(true);
+    try {
+      // Get all users
+      const { data: allUsers, error: usersError } = await supabase
+        .from('profiles')
+        .select('id')
+        .is('account_number', null);
+
+      if (usersError) throw usersError;
+
+      if (!allUsers || allUsers.length === 0) {
+        toast({
+          title: 'No users to notify',
+          description: 'All users already have bank details',
+        });
+        setSendingNotification(false);
+        return;
+      }
+
+      // Create notifications for all users without bank details
+      const notifications = allUsers.map(user => ({
+        user_id: user.id,
+        type: 'system',
+        title: '💰 Add Your Bank Details',
+        message: 'Please update your bank account details in Settings to receive cash prizes! Go to Profile > Settings to add your bank name, account number, and account name.',
+        read: false,
+      }));
+
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      if (notifError) throw notifError;
+
+      toast({
+        title: 'Notifications sent!',
+        description: `Sent bank details reminder to ${allUsers.length} users`,
+      });
+    } catch (error) {
+      console.error('Error sending notifications:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send notifications',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingNotification(false);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
@@ -250,6 +311,18 @@ export const UserManagement = () => {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="secondary"
+              onClick={sendBankDetailsNotification}
+              disabled={sendingNotification}
+            >
+              {sendingNotification ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Bell className="h-4 w-4 mr-2" />
+              )}
+              Notify Bank Details
+            </Button>
             <Button 
               variant="destructive" 
               onClick={() => setShowResetLeaderboardDialog(true)}

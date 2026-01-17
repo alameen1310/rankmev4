@@ -61,7 +61,8 @@ export const Profile = () => {
     setIsUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `avatars/${profile.id}-${Date.now()}.${fileExt}`;
+      // Use user-specific folder path for RLS policy compliance
+      const fileName = `${profile.id}/avatar-${Date.now()}.${fileExt}`;
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage

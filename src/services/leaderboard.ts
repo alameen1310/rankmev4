@@ -31,11 +31,11 @@ const countryFlags: Record<string, string> = {
 };
 
 export function getTierFromPoints(points: number): Tier {
-  if (points >= 50000) return 'champion';
-  if (points >= 30000) return 'diamond';
-  if (points >= 15000) return 'platinum';
-  if (points >= 7500) return 'gold';
-  if (points >= 3000) return 'silver';
+  // Aligned with database tier calculation
+  if (points >= 50000) return 'diamond';
+  if (points >= 25000) return 'platinum';
+  if (points >= 10000) return 'gold';
+  if (points >= 5000) return 'silver';
   return 'bronze';
 }
 

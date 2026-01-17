@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 import type { Tier } from '@/types';
-import { getTierFromPoints } from '@/services/leaderboard';
+import { calculateTier } from '@/lib/tierUtils';
 
 export interface Profile {
   id: string;

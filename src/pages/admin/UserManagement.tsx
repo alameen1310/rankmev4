@@ -301,17 +301,18 @@ export const UserManagement = () => {
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold">User Management</h1>
             <p className="text-muted-foreground">
               View user details, send DMs, and manage rankings
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button 
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button
+              className="w-full sm:w-auto"
               variant="secondary"
               onClick={sendBankDetailsNotification}
               disabled={sendingNotification}
@@ -323,8 +324,9 @@ export const UserManagement = () => {
               )}
               Notify Bank Details
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              className="w-full sm:w-auto"
+              variant="destructive"
               onClick={() => setShowResetLeaderboardDialog(true)}
             >
               <RefreshCw className="h-4 w-4 mr-2" />

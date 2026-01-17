@@ -23,6 +23,7 @@ import { Friends } from "./pages/Friends";
 import { Themes } from "./pages/Themes";
 import { Gamification } from "./pages/Gamification";
 import { Notifications } from "./pages/Notifications";
+import { Settings } from "./pages/Settings";
 import { PublicProfile } from "./pages/PublicProfile";
 import AdminQuestions from "./pages/AdminQuestions";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -63,6 +64,7 @@ const App = () => (
                       <Route path="/themes" element={<Themes />} />
                       <Route path="/gamification" element={<Gamification />} />
                       <Route path="/notifications" element={<Notifications />} />
+                      <Route path="/settings" element={<Settings />} />
                       <Route path="/user/:userId" element={<PublicProfile />} />
                       <Route path="/admin" element={<AdminDashboard />} />
                       <Route path="/admin/questions" element={<AdminQuestions />} />

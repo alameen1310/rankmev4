@@ -1,6 +1,6 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { TierBadge } from '@/components/TierBadge';
 import { cn } from '@/lib/utils';
 import { BADGES } from '@/services/gamification';
@@ -93,6 +93,7 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className, showBadges = t
 
       {/* Avatar */}
       <Avatar className="h-10 w-10 shrink-0 border-2 border-border">
+        {entry.avatar && <AvatarImage src={entry.avatar} alt={entry.username} />}
         <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
           {entry.username.slice(0, 2).toUpperCase()}
         </AvatarFallback>

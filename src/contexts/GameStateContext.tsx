@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Tier } from '@/types';
 import { getTierFromPoints } from '@/services/leaderboard';
 import { trackingService, TRACKING_EVENTS } from '@/services/trackingService';
+import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteAllNotifications } from '@/services/friends';
 
 interface GameState {
   streak: number;
@@ -60,7 +61,6 @@ const defaultState: GameState = {
 const GameStateContext = createContext<GameStateContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'rankme_game_state';
-const NOTIFICATIONS_KEY = 'rankme_notifications';
 
 export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, refreshProfile } = useAuth();
@@ -77,19 +77,42 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return defaultState;
   });
 
-  const [notifications, setNotifications] = useState<Notification[]>(() => {
-    const saved = localStorage.getItem(NOTIFICATIONS_KEY);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Fetch notifications from database
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    
+    setIsLoadingNotifications(true);
+    try {
+      const data = await getNotifications(user.id);
+      setNotifications(data.map(n => ({
+        id: n.id,
+        type: n.type as Notification['type'],
+        title: n.title || '',
+        message: n.message || '',
+        read: n.read || false,
+        createdAt: n.created_at || new Date().toISOString(),
+        data: n.data as Record<string, unknown> | undefined,
+      })));
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  }, [user]);
+
+  // Fetch notifications when user changes
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    } else {
+      setNotifications([]);
+    }
+  }, [user, fetchNotifications]);
 
   // Sync state with profile when it changes
   useEffect(() => {
@@ -173,11 +196,6 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Broadcast state change for cross-component sync
     window.dispatchEvent(new CustomEvent('gamestate-updated', { detail: state }));
   }, [state]);
-
-  // Save notifications to localStorage
-  useEffect(() => {
-    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications));
-  }, [notifications]);
 
   // Fetch user rank on mount
   useEffect(() => {
@@ -264,6 +282,7 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, []);
 
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'createdAt'>) => {
+    // For local-only notifications that don't need database persistence
     const newNotification: Notification = {
       ...notification,
       id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -273,19 +292,45 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setNotifications(prev => [newNotification, ...prev].slice(0, 50)); // Keep last 50
   }, []);
 
-  const markNotificationRead = useCallback((id: string) => {
+  const markNotificationRead = useCallback(async (id: string) => {
+    // Optimistically update UI
     setNotifications(prev => 
       prev.map(n => n.id === id ? { ...n, read: true } : n)
     );
-  }, []);
+    
+    // Update in database (only if it's a real DB notification)
+    if (user && !id.startsWith('notif_')) {
+      try {
+        await markNotificationAsRead(id);
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
+    }
+  }, [user]);
 
-  const markAllNotificationsRead = useCallback(() => {
+  const markAllNotificationsRead = useCallback(async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  }, []);
+    
+    if (user) {
+      try {
+        await markAllNotificationsAsRead(user.id);
+      } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+      }
+    }
+  }, [user]);
 
-  const clearNotifications = useCallback(() => {
+  const clearNotifications = useCallback(async () => {
     setNotifications([]);
-  }, []);
+    
+    if (user) {
+      try {
+        await deleteAllNotifications(user.id);
+      } catch (error) {
+        console.error('Error deleting notifications:', error);
+      }
+    }
+  }, [user]);
 
   // Load showcase badges and title from localStorage on mount
   useEffect(() => {

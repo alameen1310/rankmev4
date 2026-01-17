@@ -259,8 +259,30 @@ export const UserManagement = () => {
     
     setProcessingAction(true);
     try {
-      // Reset all users' points and tier
-      const { error: profilesError } = await supabase
+      console.log('Starting leaderboard reset...');
+      console.log(`Total users to reset: ${users.length}`);
+
+      // Step 1: Get all user IDs first
+      const { data: allUsers, error: fetchError } = await supabase
+        .from('profiles')
+        .select('id, username, total_points');
+
+      if (fetchError) {
+        console.error('Failed to fetch users:', fetchError);
+        throw fetchError;
+      }
+
+      console.log(`Fetched ${allUsers?.length || 0} users from database`);
+      
+      // Log users with points before reset
+      const usersWithPoints = allUsers?.filter(u => (u.total_points || 0) > 0) || [];
+      console.log(`Users with points > 0: ${usersWithPoints.length}`);
+      usersWithPoints.forEach(u => {
+        console.log(`  - ${u.username || u.id}: ${u.total_points} points`);
+      });
+
+      // Step 2: Reset all profiles - use gte to ensure we get all rows
+      const { data: updatedProfiles, error: profilesError, count: profilesCount } = await supabase
         .from('profiles')
         .update({ 
           total_points: 0,
@@ -268,39 +290,76 @@ export const UserManagement = () => {
           tier: 'bronze',
           updated_at: new Date().toISOString(),
         })
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+        .gte('total_points', 0) // This matches all rows including 0 and NULL
+        .select('id');
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error('Failed to reset profiles:', profilesError);
+        throw profilesError;
+      }
 
-      // Reset leaderboard entries
-      const { error: leaderboardError } = await supabase
+      // If the above didn't work, try without filter (using is not null on id)
+      if (!updatedProfiles || updatedProfiles.length === 0) {
+        console.log('First update returned no rows, trying alternative approach...');
+        
+        const { error: altProfilesError, count } = await supabase
+          .from('profiles')
+          .update({ 
+            total_points: 0,
+            weekly_points: 0,
+            tier: 'bronze',
+            updated_at: new Date().toISOString(),
+          })
+          .not('id', 'is', null);
+
+        if (altProfilesError) {
+          console.error('Alternative update failed:', altProfilesError);
+          throw altProfilesError;
+        }
+        console.log(`Alternative update completed, count: ${count}`);
+      } else {
+        console.log(`Successfully reset ${updatedProfiles.length} profiles`);
+      }
+
+      // Step 3: Reset leaderboard entries
+      const { error: leaderboardError, count: leaderboardCount } = await supabase
         .from('leaderboard_entries')
         .update({ 
           points: 0,
           rank: null,
           updated_at: new Date().toISOString(),
         })
-        .neq('id', 0);
+        .not('id', 'is', null);
 
-      if (leaderboardError) throw leaderboardError;
+      if (leaderboardError) {
+        console.error('Failed to reset leaderboard entries:', leaderboardError);
+        throw leaderboardError;
+      }
 
-      // Log the admin action
+      console.log(`Reset ${leaderboardCount || 'all'} leaderboard entries`);
+
+      // Step 4: Log the admin action
       await logAdminAction('reset_leaderboard', null, {
-        total_users_affected: users.length,
+        total_users_affected: allUsers?.length || users.length,
+        users_with_points_reset: usersWithPoints.length,
         reset_date: new Date().toISOString(),
       });
 
+      console.log('Leaderboard reset completed successfully!');
+
       toast({
-        title: 'Leaderboard reset!',
-        description: 'All user points have been reset to 0',
+        title: '✅ Leaderboard reset!',
+        description: `Successfully reset ${allUsers?.length || users.length} users to 0 points`,
       });
       setShowResetLeaderboardDialog(false);
-      loadUsers();
+      
+      // Reload users to reflect changes
+      await loadUsers();
     } catch (error) {
       console.error('Error resetting leaderboard:', error);
       toast({
         title: 'Error',
-        description: 'Failed to reset leaderboard',
+        description: `Failed to reset leaderboard: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {

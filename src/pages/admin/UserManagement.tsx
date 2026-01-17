@@ -394,17 +394,17 @@ export const UserManagement = () => {
             <CardTitle>All Users ({filteredUsers.length})</CardTitle>
             <CardDescription>Click on actions to view details, send DM, or edit rank</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
+          <CardContent className="p-0 sm:p-6">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Tier</TableHead>
+                    <TableHead className="min-w-[150px]">User</TableHead>
+                    <TableHead className="hidden sm:table-cell">Tier</TableHead>
                     <TableHead>Points</TableHead>
-                    <TableHead>Quizzes</TableHead>
-                    <TableHead>Last Active</TableHead>
-                    <TableHead>Bank Details</TableHead>
+                    <TableHead className="hidden md:table-cell">Quizzes</TableHead>
+                    <TableHead className="hidden lg:table-cell">Last Active</TableHead>
+                    <TableHead className="hidden md:table-cell">Bank Details</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -440,8 +440,8 @@ export const UserManagement = () => {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{user.tier || 'bronze'}</Badge>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant="outline">{calculateTier(user.total_points || 0)}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
@@ -449,13 +449,13 @@ export const UserManagement = () => {
                             {(user.total_points || 0).toLocaleString()}
                           </div>
                         </TableCell>
-                        <TableCell>{user.total_quizzes_completed || 0}</TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">{user.total_quizzes_completed || 0}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
                           {user.last_active_date 
                             ? format(new Date(user.last_active_date), 'MMM d, yyyy')
                             : 'Never'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           {user.bank_name && user.account_number ? (
                             <Badge variant="secondary" className="text-xs">
                               <Banknote className="h-3 w-3 mr-1" />

@@ -54,13 +54,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (data) {
+        // Always calculate tier from points for consistency
+        const calculatedTier = calculateTier(data.total_points || 0);
         setProfile({
           id: data.id,
           username: data.username,
           display_name: data.display_name,
           avatar_url: data.avatar_url,
           country: data.country,
-          tier: (data.tier as Tier) || getTierFromPoints(data.total_points || 0),
+          tier: calculatedTier,
           total_points: data.total_points || 0,
           weekly_points: data.weekly_points || 0,
           accuracy: data.accuracy ? Number(data.accuracy) : 0,

@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Tier, LeaderboardEntry } from '@/types';
+import { calculateTier } from '@/lib/tierUtils';
 
 export interface LeaderboardProfile {
   id: string;
@@ -31,12 +32,7 @@ const countryFlags: Record<string, string> = {
 };
 
 export function getTierFromPoints(points: number): Tier {
-  // Aligned with database tier calculation
-  if (points >= 50000) return 'diamond';
-  if (points >= 25000) return 'platinum';
-  if (points >= 10000) return 'gold';
-  if (points >= 5000) return 'silver';
-  return 'bronze';
+  return calculateTier(points);
 }
 
 function getCountryFlag(countryCode: string | null): string {

@@ -21,10 +21,13 @@ import {
   Clock,
   Calendar,
   Edit,
-  Trash2,
   AlertTriangle,
   Bell,
-  Loader2
+  Loader2,
+  Shield,
+  Megaphone,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -50,6 +53,7 @@ interface UserProfile {
   account_number: string | null;
   account_name: string | null;
   bank_name: string | null;
+  is_admin: boolean | null;
 }
 
 export const UserManagement = () => {
@@ -60,11 +64,18 @@ export const UserManagement = () => {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [showDMDialog, setShowDMDialog] = useState(false);
-  const [showEditRankDialog, setShowEditRankDialog] = useState(false);
+  const [showEditPointsDialog, setShowEditPointsDialog] = useState(false);
   const [showResetLeaderboardDialog, setShowResetLeaderboardDialog] = useState(false);
+  const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
+  const [showMakeAdminDialog, setShowMakeAdminDialog] = useState(false);
   const [dmMessage, setDmMessage] = useState('');
-  const [newPoints, setNewPoints] = useState('');
+  const [pointsChange, setPointsChange] = useState('');
+  const [pointsReason, setPointsReason] = useState('');
+  const [isAddingPoints, setIsAddingPoints] = useState(true);
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
   const [sendingDM, setSendingDM] = useState(false);
+  const [processingAction, setProcessingAction] = useState(false);
   const { toast } = useToast();
   const { user: adminUser } = useAuth();
 
@@ -119,31 +130,54 @@ export const UserManagement = () => {
     setShowDMDialog(true);
   };
 
-  const handleEditRank = (user: UserProfile) => {
+  const handleEditPoints = (user: UserProfile) => {
     setSelectedUser(user);
-    setNewPoints(String(user.total_points || 0));
-    setShowEditRankDialog(true);
+    setPointsChange('');
+    setPointsReason('');
+    setIsAddingPoints(true);
+    setShowEditPointsDialog(true);
   };
 
+  const handleMakeAdmin = (user: UserProfile) => {
+    setSelectedUser(user);
+    setShowMakeAdminDialog(true);
+  };
+
+  // Admin DM - bypasses friend requirements
   const sendDirectMessage = async () => {
     if (!selectedUser || !dmMessage.trim() || !adminUser) return;
     
     setSendingDM(true);
     try {
-      const { error } = await supabase
+      // Insert the message directly - admin bypasses friend requirements
+      const { error: msgError } = await supabase
         .from('direct_messages')
         .insert({
           sender_id: adminUser.id,
           receiver_id: selectedUser.id,
-          message: dmMessage.trim(),
+          message: `[RankMe Admin] ${dmMessage.trim()}`,
           message_type: 'text',
         });
 
-      if (error) throw error;
+      if (msgError) throw msgError;
+
+      // Create a notification for the user
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: selectedUser.id,
+          type: 'admin_message',
+          title: '📩 New Message from RankMe Admin',
+          message: dmMessage.trim().slice(0, 100) + (dmMessage.length > 100 ? '...' : ''),
+          data: { from_admin: true },
+        });
+
+      // Log the admin action
+      await logAdminAction('admin_dm', selectedUser.id, { message_preview: dmMessage.slice(0, 50) });
 
       toast({
         title: 'Message sent!',
-        description: `DM sent to ${selectedUser.username || 'user'}`,
+        description: `Admin DM sent to ${selectedUser.username || 'user'}`,
       });
       setShowDMDialog(false);
       setDmMessage('');
@@ -159,27 +193,33 @@ export const UserManagement = () => {
     }
   };
 
+  // Update user points with audit logging
   const updateUserPoints = async () => {
-    if (!selectedUser || !newPoints) return;
+    if (!selectedUser || !pointsChange || !adminUser) return;
     
+    setProcessingAction(true);
     try {
-      const points = parseInt(newPoints);
-      if (isNaN(points) || points < 0) {
+      const changeAmount = parseInt(pointsChange);
+      if (isNaN(changeAmount) || changeAmount < 0) {
         toast({
           title: 'Invalid points',
-          description: 'Please enter a valid number',
+          description: 'Please enter a valid positive number',
           variant: 'destructive',
         });
         return;
       }
 
-      // Calculate new tier based on points
-      const newTier = calculateTier(points);
+      const currentPoints = selectedUser.total_points || 0;
+      const newPoints = isAddingPoints 
+        ? currentPoints + changeAmount 
+        : Math.max(0, currentPoints - changeAmount);
+
+      const newTier = calculateTier(newPoints);
 
       const { error } = await supabase
         .from('profiles')
         .update({ 
-          total_points: points,
+          total_points: newPoints,
           tier: newTier,
           updated_at: new Date().toISOString(),
         })
@@ -187,11 +227,19 @@ export const UserManagement = () => {
 
       if (error) throw error;
 
+      // Log the admin action
+      await logAdminAction('edit_points', selectedUser.id, {
+        previous_points: currentPoints,
+        new_points: newPoints,
+        change: isAddingPoints ? `+${changeAmount}` : `-${changeAmount}`,
+        reason: pointsReason || 'No reason provided',
+      });
+
       toast({
         title: 'Points updated!',
-        description: `${selectedUser.username}'s points set to ${points.toLocaleString()} (${newTier} tier)`,
+        description: `${selectedUser.username}'s points ${isAddingPoints ? 'increased' : 'decreased'} by ${changeAmount.toLocaleString()} (now ${newPoints.toLocaleString()}, ${newTier} tier)`,
       });
-      setShowEditRankDialog(false);
+      setShowEditPointsDialog(false);
       loadUsers();
     } catch (error) {
       console.error('Error updating points:', error);
@@ -200,10 +248,16 @@ export const UserManagement = () => {
         description: 'Failed to update points',
         variant: 'destructive',
       });
+    } finally {
+      setProcessingAction(false);
     }
   };
 
+  // Reset entire leaderboard
   const resetLeaderboard = async () => {
+    if (!adminUser) return;
+    
+    setProcessingAction(true);
     try {
       // Reset all users' points and tier
       const { error: profilesError } = await supabase
@@ -214,7 +268,7 @@ export const UserManagement = () => {
           tier: 'bronze',
           updated_at: new Date().toISOString(),
         })
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Update all
+        .neq('id', '00000000-0000-0000-0000-000000000000');
 
       if (profilesError) throw profilesError;
 
@@ -226,9 +280,15 @@ export const UserManagement = () => {
           rank: null,
           updated_at: new Date().toISOString(),
         })
-        .neq('id', 0); // Update all
+        .neq('id', 0);
 
       if (leaderboardError) throw leaderboardError;
+
+      // Log the admin action
+      await logAdminAction('reset_leaderboard', null, {
+        total_users_affected: users.length,
+        reset_date: new Date().toISOString(),
+      });
 
       toast({
         title: 'Leaderboard reset!',
@@ -243,6 +303,146 @@ export const UserManagement = () => {
         description: 'Failed to reset leaderboard',
         variant: 'destructive',
       });
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  // Send broadcast notification to all users
+  const sendBroadcast = async () => {
+    if (!broadcastTitle.trim() || !broadcastMessage.trim() || !adminUser) return;
+    
+    setProcessingAction(true);
+    try {
+      // Get all user IDs
+      const { data: allUsers, error: usersError } = await supabase
+        .from('profiles')
+        .select('id');
+
+      if (usersError) throw usersError;
+
+      if (!allUsers || allUsers.length === 0) {
+        toast({
+          title: 'No users to notify',
+          description: 'There are no users in the system',
+        });
+        return;
+      }
+
+      // Create notifications for all users
+      const notifications = allUsers.map(user => ({
+        user_id: user.id,
+        type: 'announcement',
+        title: `📢 ${broadcastTitle.trim()}`,
+        message: broadcastMessage.trim(),
+        read: false,
+        data: { is_broadcast: true, from_admin: true },
+      }));
+
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      if (notifError) throw notifError;
+
+      // Log the admin action
+      await logAdminAction('broadcast', null, {
+        title: broadcastTitle,
+        message_preview: broadcastMessage.slice(0, 100),
+        recipients_count: allUsers.length,
+      });
+
+      toast({
+        title: 'Broadcast sent!',
+        description: `Notification sent to ${allUsers.length} users`,
+      });
+      setShowBroadcastDialog(false);
+      setBroadcastTitle('');
+      setBroadcastMessage('');
+    } catch (error) {
+      console.error('Error sending broadcast:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send broadcast',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  // Make user an admin
+  const makeUserAdmin = async () => {
+    if (!selectedUser || !adminUser) return;
+    
+    setProcessingAction(true);
+    try {
+      const newAdminStatus = !selectedUser.is_admin;
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          is_admin: newAdminStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selectedUser.id);
+
+      if (error) throw error;
+
+      // Log the admin action
+      await logAdminAction(newAdminStatus ? 'make_admin' : 'remove_admin', selectedUser.id, {
+        username: selectedUser.username,
+      });
+
+      // Create a notification for the user
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: selectedUser.id,
+          type: 'system',
+          title: newAdminStatus ? '🛡️ Admin Access Granted' : '🛡️ Admin Access Removed',
+          message: newAdminStatus 
+            ? 'You have been promoted to admin! You can now access the admin dashboard.'
+            : 'Your admin access has been revoked.',
+        });
+
+      toast({
+        title: newAdminStatus ? 'Admin created!' : 'Admin removed!',
+        description: `${selectedUser.username} is ${newAdminStatus ? 'now' : 'no longer'} an admin`,
+      });
+      setShowMakeAdminDialog(false);
+      loadUsers();
+    } catch (error) {
+      console.error('Error updating admin status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update admin status',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  // Log admin action for audit trail
+  const logAdminAction = async (
+    actionType: string, 
+    targetUserId: string | null, 
+    details: Record<string, unknown>
+  ) => {
+    if (!adminUser) return;
+    
+    try {
+      await supabase
+        .from('admin_actions')
+        .insert([{
+          admin_id: adminUser.id,
+          action_type: actionType,
+          target_user_id: targetUserId,
+          details: details as unknown,
+        }] as never);
+    } catch (error) {
+      console.error('Error logging admin action:', error);
     }
   };
 
@@ -251,7 +451,6 @@ export const UserManagement = () => {
   const sendBankDetailsNotification = async () => {
     setSendingNotification(true);
     try {
-      // Get all users
       const { data: allUsers, error: usersError } = await supabase
         .from('profiles')
         .select('id')
@@ -268,7 +467,6 @@ export const UserManagement = () => {
         return;
       }
 
-      // Create notifications for all users without bank details
       const notifications = allUsers.map(user => ({
         user_id: user.id,
         type: 'system',
@@ -305,66 +503,90 @@ export const UserManagement = () => {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">User Management</h1>
-            <p className="text-muted-foreground">
-              View user details, send DMs, and manage rankings
+            <h1 className="text-2xl sm:text-3xl font-bold">User Management</h1>
+            <p className="text-muted-foreground text-sm">
+              View users, send DMs, manage points & admins
             </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Button
-              className="w-full sm:w-auto"
-              variant="secondary"
-              onClick={sendBankDetailsNotification}
-              disabled={sendingNotification}
-            >
-              {sendingNotification ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Bell className="h-4 w-4 mr-2" />
-              )}
-              Notify Bank Details
-            </Button>
-            <Button
-              className="w-full sm:w-auto"
-              variant="destructive"
-              onClick={() => setShowResetLeaderboardDialog(true)}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Reset Leaderboard
-            </Button>
           </div>
         </div>
 
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowBroadcastDialog(true)}
+            className="flex-1 sm:flex-none"
+          >
+            <Megaphone className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Send Broadcast</span>
+            <span className="sm:hidden">Broadcast</span>
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={sendBankDetailsNotification}
+            disabled={sendingNotification}
+            className="flex-1 sm:flex-none"
+          >
+            {sendingNotification ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Bell className="h-4 w-4 mr-2" />
+            )}
+            <span className="hidden sm:inline">Notify Bank Details</span>
+            <span className="sm:hidden">Bank Notify</span>
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => setShowResetLeaderboardDialog(true)}
+            className="flex-1 sm:flex-none"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Reset Leaderboard</span>
+            <span className="sm:hidden">Reset</span>
+          </Button>
+        </div>
+
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Total Users</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{users.length}</div>
+              <div className="text-xl sm:text-2xl font-bold">{users.length}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Today</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Active Today</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-xl sm:text-2xl font-bold">
                 {users.filter(u => u.last_active_date === new Date().toISOString().split('T')[0]).length}
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">With Bank Details</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium">Bank Details</CardTitle>
               <Banknote className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-xl sm:text-2xl font-bold">
                 {users.filter(u => u.account_number && u.bank_name).length}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Admins</CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold">
+                {users.filter(u => u.is_admin).length}
               </div>
             </CardContent>
           </Card>
@@ -372,8 +594,8 @@ export const UserManagement = () => {
 
         {/* Search */}
         <Card>
-          <CardHeader>
-            <CardTitle>Search Users</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Search Users</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="relative">
@@ -390,34 +612,33 @@ export const UserManagement = () => {
 
         {/* Users Table */}
         <Card>
-          <CardHeader>
-            <CardTitle>All Users ({filteredUsers.length})</CardTitle>
-            <CardDescription>Click on actions to view details, send DM, or edit rank</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">All Users ({filteredUsers.length})</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Click actions to view, DM, edit points, or manage admin</CardDescription>
           </CardHeader>
           <CardContent className="p-0 sm:p-6">
             <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[150px]">User</TableHead>
+                    <TableHead className="min-w-[140px]">User</TableHead>
                     <TableHead className="hidden sm:table-cell">Tier</TableHead>
                     <TableHead>Points</TableHead>
-                    <TableHead className="hidden md:table-cell">Quizzes</TableHead>
                     <TableHead className="hidden lg:table-cell">Last Active</TableHead>
-                    <TableHead className="hidden md:table-cell">Bank Details</TableHead>
+                    <TableHead className="hidden md:table-cell">Admin</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        Loading users...
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                       </TableCell>
                     </TableRow>
                   ) : filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
+                      <TableCell colSpan={6} className="text-center py-8">
                         No users found
                       </TableCell>
                     </TableRow>
@@ -425,7 +646,7 @@ export const UserManagement = () => {
                     filteredUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 sm:gap-3">
                             <Avatar className="h-8 w-8">
                               {user.avatar_url ? (
                                 <AvatarImage src={user.avatar_url} alt={user.username || ''} />
@@ -434,35 +655,34 @@ export const UserManagement = () => {
                                 {(user.username || 'U').slice(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <p className="font-medium">{user.username || 'No username'}</p>
-                              <p className="text-xs text-muted-foreground">{user.display_name}</p>
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm truncate">{user.username || 'No username'}</p>
+                              <p className="text-xs text-muted-foreground truncate hidden sm:block">{user.display_name}</p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          <Badge variant="outline">{calculateTier(user.total_points || 0)}</Badge>
+                          <Badge variant="outline" className="text-xs">{calculateTier(user.total_points || 0)}</Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 text-sm">
                             <Trophy className="h-3 w-3 text-warning" />
                             {(user.total_points || 0).toLocaleString()}
                           </div>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">{user.total_quizzes_completed || 0}</TableCell>
-                        <TableCell className="hidden lg:table-cell">
+                        <TableCell className="hidden lg:table-cell text-sm">
                           {user.last_active_date 
-                            ? format(new Date(user.last_active_date), 'MMM d, yyyy')
+                            ? format(new Date(user.last_active_date), 'MMM d')
                             : 'Never'}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {user.bank_name && user.account_number ? (
-                            <Badge variant="secondary" className="text-xs">
-                              <Banknote className="h-3 w-3 mr-1" />
-                              Added
+                          {user.is_admin ? (
+                            <Badge variant="default" className="text-xs">
+                              <Shield className="h-3 w-3 mr-1" />
+                              Admin
                             </Badge>
                           ) : (
-                            <span className="text-xs text-muted-foreground">Not set</span>
+                            <span className="text-xs text-muted-foreground">User</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -470,6 +690,7 @@ export const UserManagement = () => {
                             <Button 
                               variant="ghost" 
                               size="icon"
+                              className="h-8 w-8"
                               onClick={() => handleViewUser(user)}
                               title="View details"
                             >
@@ -478,18 +699,29 @@ export const UserManagement = () => {
                             <Button 
                               variant="ghost" 
                               size="icon"
+                              className="h-8 w-8"
                               onClick={() => handleDMUser(user)}
-                              title="Send DM"
+                              title="Send admin DM"
                             >
                               <MessageSquare className="h-4 w-4" />
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="icon"
-                              onClick={() => handleEditRank(user)}
-                              title="Edit rank/points"
+                              className="h-8 w-8"
+                              onClick={() => handleEditPoints(user)}
+                              title="Edit points"
                             >
                               <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="h-8 w-8 hidden sm:flex"
+                              onClick={() => handleMakeAdmin(user)}
+                              title={user.is_admin ? "Remove admin" : "Make admin"}
+                            >
+                              <Shield className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -515,7 +747,12 @@ export const UserManagement = () => {
                     {(selectedUser?.username || 'U').slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                {selectedUser?.username || 'User Details'}
+                <div>
+                  {selectedUser?.username || 'User Details'}
+                  {selectedUser?.is_admin && (
+                    <Badge variant="default" className="ml-2 text-xs">Admin</Badge>
+                  )}
+                </div>
               </DialogTitle>
               <DialogDescription>
                 Full user profile and activity details
@@ -540,7 +777,7 @@ export const UserManagement = () => {
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Tier</Label>
-                    <Badge variant="outline">{selectedUser.tier || 'bronze'}</Badge>
+                    <Badge variant="outline">{calculateTier(selectedUser.total_points || 0)}</Badge>
                   </div>
                 </div>
 
@@ -634,13 +871,17 @@ export const UserManagement = () => {
               </div>
             )}
 
-            <DialogFooter>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button variant="outline" onClick={() => setShowUserDetails(false)}>
                 Close
               </Button>
               <Button onClick={() => { setShowUserDetails(false); handleDMUser(selectedUser!); }}>
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Send DM
+              </Button>
+              <Button variant="secondary" onClick={() => { setShowUserDetails(false); handleMakeAdmin(selectedUser!); }}>
+                <Shield className="h-4 w-4 mr-2" />
+                {selectedUser?.is_admin ? 'Remove Admin' : 'Make Admin'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -652,10 +893,10 @@ export const UserManagement = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5" />
-                Send Direct Message
+                Send Admin Direct Message
               </DialogTitle>
               <DialogDescription>
-                Send a message to {selectedUser?.username || 'this user'}
+                This message bypasses friend requirements. User will be notified.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -676,11 +917,14 @@ export const UserManagement = () => {
               <div>
                 <Label>Message</Label>
                 <Textarea
-                  placeholder="Type your message..."
+                  placeholder="Type your admin message..."
                   value={dmMessage}
                   onChange={(e) => setDmMessage(e.target.value)}
                   rows={4}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Message will be prefixed with "[RankMe Admin]"
+                </p>
               </div>
             </div>
             <DialogFooter>
@@ -695,8 +939,8 @@ export const UserManagement = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Rank Dialog */}
-        <Dialog open={showEditRankDialog} onOpenChange={setShowEditRankDialog}>
+        {/* Edit Points Dialog */}
+        <Dialog open={showEditPointsDialog} onOpenChange={setShowEditPointsDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -704,7 +948,7 @@ export const UserManagement = () => {
                 Edit User Points
               </DialogTitle>
               <DialogDescription>
-                Update points for {selectedUser?.username || 'this user'}
+                Add or subtract points for {selectedUser?.username || 'this user'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -717,28 +961,75 @@ export const UserManagement = () => {
                 <div>
                   <p className="font-medium">{selectedUser?.username}</p>
                   <p className="text-xs text-muted-foreground">
-                    Current: {(selectedUser?.total_points || 0).toLocaleString()} points
+                    Current: {(selectedUser?.total_points || 0).toLocaleString()} points ({calculateTier(selectedUser?.total_points || 0)})
                   </p>
                 </div>
               </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant={isAddingPoints ? "default" : "outline"}
+                  onClick={() => setIsAddingPoints(true)}
+                  className="flex-1"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Points
+                </Button>
+                <Button
+                  variant={!isAddingPoints ? "destructive" : "outline"}
+                  onClick={() => setIsAddingPoints(false)}
+                  className="flex-1"
+                >
+                  <Minus className="h-4 w-4 mr-2" />
+                  Subtract Points
+                </Button>
+              </div>
+              
               <div>
-                <Label>New Points Value</Label>
+                <Label>Points Amount</Label>
                 <Input
                   type="number"
-                  placeholder="Enter new points"
-                  value={newPoints}
-                  onChange={(e) => setNewPoints(e.target.value)}
+                  placeholder="Enter points amount"
+                  value={pointsChange}
+                  onChange={(e) => setPointsChange(e.target.value)}
                   min="0"
                 />
               </div>
+              
+              <div>
+                <Label>Reason (optional)</Label>
+                <Textarea
+                  placeholder="Why are you changing this user's points?"
+                  value={pointsReason}
+                  onChange={(e) => setPointsReason(e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              {pointsChange && (
+                <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                  <p>
+                    New total: <strong>
+                      {(isAddingPoints 
+                        ? (selectedUser?.total_points || 0) + parseInt(pointsChange || '0')
+                        : Math.max(0, (selectedUser?.total_points || 0) - parseInt(pointsChange || '0'))
+                      ).toLocaleString()}
+                    </strong> points
+                  </p>
+                </div>
+              )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowEditRankDialog(false)}>
+              <Button variant="outline" onClick={() => setShowEditPointsDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={updateUserPoints}>
-                <Trophy className="h-4 w-4 mr-2" />
-                Update Points
+              <Button 
+                onClick={updateUserPoints} 
+                disabled={!pointsChange || processingAction}
+                variant={isAddingPoints ? "default" : "destructive"}
+              >
+                {processingAction ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trophy className="h-4 w-4 mr-2" />}
+                {isAddingPoints ? 'Add' : 'Subtract'} Points
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -761,17 +1052,133 @@ export const UserManagement = () => {
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                 <li>All user total points will be set to 0</li>
                 <li>All weekly points will be reset</li>
+                <li>All tiers will be reset to Bronze</li>
                 <li>Leaderboard rankings will be cleared</li>
-                <li>This action is irreversible</li>
+                <li>This affects {users.length} users</li>
+                <li>This action is logged and irreversible</li>
               </ul>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowResetLeaderboardDialog(false)}>
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={resetLeaderboard}>
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <Button variant="destructive" onClick={resetLeaderboard} disabled={processingAction}>
+                {processingAction ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                 Yes, Reset Everything
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Broadcast Dialog */}
+        <Dialog open={showBroadcastDialog} onOpenChange={setShowBroadcastDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Megaphone className="h-5 w-5" />
+                Send Broadcast to All Users
+              </DialogTitle>
+              <DialogDescription>
+                This notification will be sent to all {users.length} users
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Title</Label>
+                <Input
+                  placeholder="e.g., New Feature Available!"
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Message</Label>
+                <Textarea
+                  placeholder="Write your announcement..."
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  rows={4}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowBroadcastDialog(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={sendBroadcast} 
+                disabled={!broadcastTitle.trim() || !broadcastMessage.trim() || processingAction}
+              >
+                {processingAction ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                Send to All Users
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Make Admin Dialog */}
+        <Dialog open={showMakeAdminDialog} onOpenChange={setShowMakeAdminDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                {selectedUser?.is_admin ? 'Remove Admin Access' : 'Grant Admin Access'}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedUser?.is_admin 
+                  ? `Remove admin privileges from ${selectedUser?.username}?`
+                  : `Make ${selectedUser?.username} an admin?`
+                }
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <Avatar className="h-10 w-10">
+                  {selectedUser?.avatar_url ? (
+                    <AvatarImage src={selectedUser.avatar_url} alt={selectedUser?.username || ''} />
+                  ) : null}
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {(selectedUser?.username || 'U').slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{selectedUser?.username}</p>
+                  <p className="text-xs text-muted-foreground">{selectedUser?.display_name}</p>
+                </div>
+              </div>
+              
+              <div className="p-4 bg-muted/50 rounded-lg text-sm space-y-2">
+                {selectedUser?.is_admin ? (
+                  <p className="text-muted-foreground">
+                    This user will lose access to the admin dashboard and all admin features.
+                  </p>
+                ) : (
+                  <>
+                    <p className="font-medium">Admin privileges include:</p>
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                      <li>Access to admin dashboard</li>
+                      <li>View all user details</li>
+                      <li>Send admin DMs to any user</li>
+                      <li>Edit user points</li>
+                      <li>Reset leaderboard</li>
+                      <li>Send broadcast notifications</li>
+                      <li>Manage other admins</li>
+                    </ul>
+                  </>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowMakeAdminDialog(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={makeUserAdmin} 
+                disabled={processingAction}
+                variant={selectedUser?.is_admin ? "destructive" : "default"}
+              >
+                {processingAction ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Shield className="h-4 w-4 mr-2" />}
+                {selectedUser?.is_admin ? 'Remove Admin' : 'Make Admin'}
               </Button>
             </DialogFooter>
           </DialogContent>

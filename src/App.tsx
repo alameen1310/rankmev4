@@ -30,6 +30,7 @@ import AddQuestion from "./pages/admin/AddQuestion";
 import ManageQuestions from "./pages/admin/ManageQuestions";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminSettings from "./pages/admin/AdminSettings";
+import UserManagement from "./pages/admin/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,6 +68,7 @@ const App = () => (
                       <Route path="/admin/questions" element={<AdminQuestions />} />
                       <Route path="/admin/add-question" element={<AddQuestion />} />
                       <Route path="/admin/manage" element={<ManageQuestions />} />
+                      <Route path="/admin/users" element={<UserManagement />} />
                       <Route path="/admin/analytics" element={<AdminAnalytics />} />
                       <Route path="/admin/settings" element={<AdminSettings />} />
                       <Route path="*" element={<NotFound />} />

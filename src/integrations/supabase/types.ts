@@ -648,8 +648,11 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_name: string | null
+          account_number: string | null
           accuracy: number | null
           avatar_url: string | null
+          bank_name: string | null
           country: string | null
           created_at: string | null
           current_streak: number | null
@@ -669,8 +672,11 @@ export type Database = {
           weekly_points: number | null
         }
         Insert: {
+          account_name?: string | null
+          account_number?: string | null
           accuracy?: number | null
           avatar_url?: string | null
+          bank_name?: string | null
           country?: string | null
           created_at?: string | null
           current_streak?: number | null
@@ -690,8 +696,11 @@ export type Database = {
           weekly_points?: number | null
         }
         Update: {
+          account_name?: string | null
+          account_number?: string | null
           accuracy?: number | null
           avatar_url?: string | null
+          bank_name?: string | null
           country?: string | null
           created_at?: string | null
           current_streak?: number | null

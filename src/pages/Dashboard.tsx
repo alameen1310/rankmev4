@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Trophy, Target, Zap, TrendingUp, ChevronRight, Flame, Share2, Gift, Medal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { TierBadge } from '@/components/TierBadge';
 import { StreakCounter } from '@/components/StreakCounter';
 import { StatCard } from '@/components/StatCard';
@@ -29,6 +29,7 @@ export const Dashboard = () => {
           <div className="glass rounded-2xl p-4">
             <div className="flex items-center gap-4">
               <Avatar className="h-14 w-14 border-3 border-primary/30 shrink-0">
+                {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.username || 'User'} />}
                 <AvatarFallback className="bg-primary/10 text-primary text-lg font-bold">
                   {(profile.username || 'U').slice(0, 2).toUpperCase()}
                 </AvatarFallback>

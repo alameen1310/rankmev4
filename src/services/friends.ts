@@ -238,3 +238,28 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
     throw error;
   }
 }
+
+export async function markAllNotificationsAsRead(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read: true })
+    .eq('user_id', userId)
+    .eq('read', false);
+  
+  if (error) {
+    console.error('Error marking all notifications as read:', error);
+    throw error;
+  }
+}
+
+export async function deleteAllNotifications(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('user_id', userId);
+  
+  if (error) {
+    console.error('Error deleting notifications:', error);
+    throw error;
+  }
+}

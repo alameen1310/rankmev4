@@ -163,7 +163,12 @@ export const Profile = () => {
               <Share2 className="h-4 w-4 mr-2" />
               Share
             </Button>
-            <Button variant="secondary" size="sm" className="min-h-[44px]">
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              className="min-h-[44px]"
+              onClick={() => navigate('/settings')}
+            >
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>

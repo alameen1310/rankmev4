@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trophy, Zap, Target, UserPlus, Swords, MessageCircle, Check, Clock, UserMinus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { TierBadge } from '@/components/TierBadge';
 import { CircularProgress } from '@/components/CircularProgress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -322,13 +322,12 @@ export const PublicProfile = () => {
         <div className="relative max-w-lg mx-auto text-center">
           <div className="relative inline-block mb-3">
             <Avatar className="h-24 w-24 border-4 border-primary/30">
-              {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt={displayName} className="object-cover" />
-              ) : (
-                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                  {displayName.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
+              {profile.avatar_url && (
+                <AvatarImage src={profile.avatar_url} alt={displayName} />
               )}
+              <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
+                {displayName.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
             </Avatar>
             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2">
               <TierBadge tier={profile.tier} size="sm" />

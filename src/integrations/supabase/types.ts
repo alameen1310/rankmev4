@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_actions: {
+        Row: {
+          action_type: string
+          admin_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          target_user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_actions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_actions_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_summary_jobs: {
         Row: {
           completed_at: string | null
@@ -660,6 +702,7 @@ export type Database = {
           display_name: string | null
           equipped_title: string | null
           id: string
+          is_admin: boolean | null
           last_active_date: string | null
           last_chat_date: string | null
           longest_streak: number | null
@@ -686,6 +729,7 @@ export type Database = {
           display_name?: string | null
           equipped_title?: string | null
           id: string
+          is_admin?: boolean | null
           last_active_date?: string | null
           last_chat_date?: string | null
           longest_streak?: number | null
@@ -712,6 +756,7 @@ export type Database = {
           display_name?: string | null
           equipped_title?: string | null
           id?: string
+          is_admin?: boolean | null
           last_active_date?: string | null
           last_chat_date?: string | null
           longest_streak?: number | null

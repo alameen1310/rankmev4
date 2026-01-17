@@ -11,7 +11,8 @@ import {
   Settings,
   LogOut,
   Shield,
-  Loader2
+  Loader2,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -23,6 +24,7 @@ interface AdminLayoutProps {
 
 const adminNavItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/admin/users', label: 'Users', icon: Users },
   { path: '/admin/questions', label: 'AI Generator', icon: Sparkles },
   { path: '/admin/add-question', label: 'Add Question', icon: PlusCircle },
   { path: '/admin/manage', label: 'Manage Questions', icon: Database },

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Trophy, Mail, Lock, User, Eye, EyeOff, Banknote, CreditCard, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export const Signup = () => {
   const navigate = useNavigate();
@@ -17,6 +18,11 @@ export const Signup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Bank details for cash prizes
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +30,7 @@ export const Signup = () => {
     if (!username || !email || !password || !confirmPassword) {
       toast({
         title: 'Missing fields',
-        description: 'Please fill in all fields',
+        description: 'Please fill in all required fields',
         variant: 'destructive',
       });
       return;
@@ -57,6 +63,24 @@ export const Signup = () => {
         variant: 'destructive',
       });
       return;
+    }
+
+    // If bank details provided, update profile after signup
+    if (bankName && accountNumber) {
+      // Small delay to ensure profile is created
+      setTimeout(async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from('profiles')
+            .update({
+              bank_name: bankName,
+              account_number: accountNumber,
+              account_name: accountName || username,
+            })
+            .eq('id', user.id);
+        }
+      }, 1000);
     }
     
     toast({
@@ -147,6 +171,63 @@ export const Signup = () => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="pl-10"
               />
+            </div>
+          </div>
+
+          {/* Bank Details Section */}
+          <div className="pt-4 border-t border-border">
+            <p className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Banknote className="h-4 w-4 text-primary" />
+              Bank Details for Cash Prizes
+              <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
+            </p>
+            
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="bankName">Bank Name</Label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="bankName"
+                    type="text"
+                    placeholder="e.g., GTBank, Access Bank"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="accountNumber">Account Number</Label>
+                <div className="relative">
+                  <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="accountNumber"
+                    type="text"
+                    placeholder="0123456789"
+                    value={accountNumber}
+                    onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className="pl-10"
+                    maxLength={10}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="accountName">Account Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="accountName"
+                    type="text"
+                    placeholder="Account holder name"
+                    value={accountName}
+                    onChange={(e) => setAccountName(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

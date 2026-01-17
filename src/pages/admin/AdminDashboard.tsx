@@ -229,7 +229,18 @@ export const AdminDashboard = () => {
             <CardDescription>Common admin tasks</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+              <Link to="/admin/users">
+                <Button variant="outline" className="w-full justify-start h-auto py-4">
+                  <Users className="h-5 w-5 mr-3 text-indigo-500" />
+                  <div className="text-left">
+                    <div className="font-medium">Users</div>
+                    <div className="text-xs text-muted-foreground">Manage all users</div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 ml-auto" />
+                </Button>
+              </Link>
+
               <Link to="/admin/questions">
                 <Button variant="outline" className="w-full justify-start h-auto py-4">
                   <Sparkles className="h-5 w-5 mr-3 text-purple-500" />

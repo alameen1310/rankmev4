@@ -1,1 +1,10 @@
 project_id = "ocytwtlgmzeouujaxjwx"
+
+[functions.generate-questions]
+verify_jwt = false
+
+[functions.reset-leaderboard]
+verify_jwt = false
+
+[functions.delete-user]
+verify_jwt = false

@@ -27,7 +27,8 @@ import {
   Shield,
   Megaphone,
   Plus,
-  Minus
+  Minus,
+  Trash2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -68,12 +69,14 @@ export const UserManagement = () => {
   const [showResetLeaderboardDialog, setShowResetLeaderboardDialog] = useState(false);
   const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
   const [showMakeAdminDialog, setShowMakeAdminDialog] = useState(false);
+  const [showDeleteUserDialog, setShowDeleteUserDialog] = useState(false);
   const [dmMessage, setDmMessage] = useState('');
   const [pointsChange, setPointsChange] = useState('');
   const [pointsReason, setPointsReason] = useState('');
   const [isAddingPoints, setIsAddingPoints] = useState(true);
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [deleteConfirmUsername, setDeleteConfirmUsername] = useState('');
   const [sendingDM, setSendingDM] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
   const { toast } = useToast();
@@ -143,12 +146,27 @@ export const UserManagement = () => {
     setShowMakeAdminDialog(true);
   };
 
-  // Admin DM - bypasses friend requirements
+  const handleDeleteUser = (user: UserProfile) => {
+    setSelectedUser(user);
+    setDeleteConfirmUsername('');
+    setShowDeleteUserDialog(true);
+  };
+
+  // Admin DM - bypasses friend requirements and creates friendship for visibility
   const sendDirectMessage = async () => {
     if (!selectedUser || !dmMessage.trim() || !adminUser) return;
     
     setSendingDM(true);
     try {
+      // Create bidirectional friendship so admin appears in user's Friends tab
+      // Use upsert to avoid duplicates
+      await supabase
+        .from('friendships')
+        .upsert([
+          { user_id: adminUser.id, friend_id: selectedUser.id },
+          { user_id: selectedUser.id, friend_id: adminUser.id },
+        ], { onConflict: 'user_id,friend_id', ignoreDuplicates: true });
+
       // Insert the message directly - admin bypasses friend requirements
       const { error: msgError } = await supabase
         .from('direct_messages')
@@ -177,7 +195,7 @@ export const UserManagement = () => {
 
       toast({
         title: 'Message sent!',
-        description: `Admin DM sent to ${selectedUser.username || 'user'}`,
+        description: `Admin DM sent to ${selectedUser.username || 'user'}. You now appear in their Friends list.`,
       });
       setShowDMDialog(false);
       setDmMessage('');
@@ -400,6 +418,58 @@ export const UserManagement = () => {
       toast({
         title: 'Error',
         description: 'Failed to update admin status',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  // Delete user entirely via backend function
+  const deleteUser = async () => {
+    if (!selectedUser || !adminUser) return;
+    
+    // Safety check: username must match
+    if (deleteConfirmUsername !== selectedUser.username) {
+      toast({
+        title: 'Username mismatch',
+        description: 'Please type the exact username to confirm deletion',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setProcessingAction(true);
+    try {
+      console.log('Deleting user via backend function...', selectedUser.id);
+
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { 
+          user_id: selectedUser.id,
+          confirm_username: deleteConfirmUsername,
+        },
+      });
+
+      if (error) {
+        console.error('delete-user invoke error:', error);
+        throw error;
+      }
+
+      console.log('delete-user response:', data);
+
+      toast({
+        title: '🗑️ User deleted',
+        description: data?.message || `User ${selectedUser.username} has been permanently deleted`,
+      });
+
+      setShowDeleteUserDialog(false);
+      setDeleteConfirmUsername('');
+      await loadUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {
@@ -705,6 +775,15 @@ export const UserManagement = () => {
                               title={user.is_admin ? "Remove admin" : "Make admin"}
                             >
                               <Shield className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteUser(user)}
+                              title="Delete user"
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -1162,6 +1241,74 @@ export const UserManagement = () => {
               >
                 {processingAction ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Shield className="h-4 w-4 mr-2" />}
                 {selectedUser?.is_admin ? 'Remove Admin' : 'Make Admin'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete User Confirmation Dialog */}
+        <Dialog open={showDeleteUserDialog} onOpenChange={setShowDeleteUserDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="h-5 w-5" />
+                Delete User Permanently
+              </DialogTitle>
+              <DialogDescription>
+                This will permanently delete {selectedUser?.username} and ALL their data. This cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 bg-destructive/10 rounded-lg">
+                <Avatar className="h-10 w-10">
+                  {selectedUser?.avatar_url ? (
+                    <AvatarImage src={selectedUser.avatar_url} alt={selectedUser?.username || ''} />
+                  ) : null}
+                  <AvatarFallback className="bg-destructive/20 text-destructive">
+                    {(selectedUser?.username || 'U').slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{selectedUser?.username}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(selectedUser?.total_points || 0).toLocaleString()} points • {selectedUser?.total_quizzes_completed || 0} quizzes
+                  </p>
+                </div>
+              </div>
+              
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-sm space-y-2">
+                <p className="font-medium text-destructive">⚠️ This will delete:</p>
+                <ul className="list-disc list-inside text-muted-foreground space-y-1 text-xs">
+                  <li>User account & profile</li>
+                  <li>All quiz results & progress</li>
+                  <li>All messages & friendships</li>
+                  <li>All battle history</li>
+                  <li>All badges & achievements</li>
+                  <li>Leaderboard entries</li>
+                </ul>
+              </div>
+
+              <div>
+                <Label className="text-destructive">Type username to confirm: <strong>{selectedUser?.username}</strong></Label>
+                <Input
+                  placeholder="Type username here..."
+                  value={deleteConfirmUsername}
+                  onChange={(e) => setDeleteConfirmUsername(e.target.value)}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteUserDialog(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={deleteUser} 
+                disabled={processingAction || deleteConfirmUsername !== selectedUser?.username}
+              >
+                {processingAction ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                Delete User Forever
               </Button>
             </DialogFooter>
           </DialogContent>

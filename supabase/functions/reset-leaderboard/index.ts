@@ -26,10 +26,7 @@ serve(async (req) => {
 
     const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
     if (!authHeader) {
-      return json(
-        { error: "Missing Authorization header" },
-        401,
-      );
+      return json({ error: "Missing Authorization header" }, 401);
     }
 
     // 1) Identify caller via JWT
@@ -48,10 +45,25 @@ serve(async (req) => {
     }
 
     const callerId = userData.user.id;
+    console.log("reset-leaderboard: caller id =", callerId);
 
     // 2) Use service role for admin check + bulk updates (bypasses RLS)
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
+    // Check if user has admin role in user_roles table
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", callerId)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    if (roleError) {
+      console.error("reset-leaderboard: failed to check user_roles", roleError);
+      return json({ error: "Failed to verify admin" }, 500);
+    }
+
+    // Also check legacy is_admin on profiles as fallback
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("id, is_admin")
@@ -63,15 +75,16 @@ serve(async (req) => {
       return json({ error: "Failed to verify admin" }, 500);
     }
 
-    if (!profile?.is_admin) {
+    const isAdmin = roleData?.role === "admin" || profile?.is_admin === true;
+
+    if (!isAdmin) {
+      console.log("reset-leaderboard: user is not admin", { roleData, profileIsAdmin: profile?.is_admin });
       return json({ error: "Forbidden (admin only)" }, 403);
     }
 
     console.log(`reset-leaderboard: admin ${callerId} requested reset`);
 
     // 3) Reset all profiles points
-    // NOTE: The Deno type definitions for the ESM build sometimes omit the `select(columns, options)` overload,
-    // so we cast to `any` here to use count/head safely.
     const { error: profilesError, count: profilesCount } = await (supabaseAdmin
       .from("profiles") as any)
       .update({
@@ -81,12 +94,14 @@ serve(async (req) => {
         updated_at: new Date().toISOString(),
       })
       .not("id", "is", null)
-      .select("id", { count: "exact", head: true });
+      .select("*", { count: "exact", head: true });
 
     if (profilesError) {
       console.error("reset-leaderboard: profiles update failed", profilesError);
       return json({ error: "Failed to reset profiles" }, 500);
     }
+
+    console.log(`reset-leaderboard: reset ${profilesCount} profiles`);
 
     // 4) Reset leaderboard entries
     const { error: leaderboardError, count: leaderboardCount } = await (supabaseAdmin
@@ -97,12 +112,14 @@ serve(async (req) => {
         updated_at: new Date().toISOString(),
       })
       .not("id", "is", null)
-      .select("id", { count: "exact", head: true });
+      .select("*", { count: "exact", head: true });
 
     if (leaderboardError) {
       console.error("reset-leaderboard: leaderboard_entries update failed", leaderboardError);
       return json({ error: "Failed to reset leaderboard entries" }, 500);
     }
+
+    console.log(`reset-leaderboard: reset ${leaderboardCount} leaderboard entries`);
 
     // 5) Audit log
     const auditDetails = {

@@ -211,7 +211,7 @@ export const UserManagement = () => {
     }
   };
 
-  // Update user points with audit logging
+  // Update user points via backend function
   const updateUserPoints = async () => {
     if (!selectedUser || !pointsChange || !adminUser) return;
     
@@ -224,38 +224,24 @@ export const UserManagement = () => {
           description: 'Please enter a valid positive number',
           variant: 'destructive',
         });
+        setProcessingAction(false);
         return;
       }
 
-      const currentPoints = selectedUser.total_points || 0;
-      const newPoints = isAddingPoints 
-        ? currentPoints + changeAmount 
-        : Math.max(0, currentPoints - changeAmount);
-
-      const newTier = calculateTier(newPoints);
-
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          total_points: newPoints,
-          tier: newTier,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', selectedUser.id);
+      const { data, error } = await supabase.functions.invoke('adjust-points', {
+        body: {
+          user_id: selectedUser.id,
+          points_change: changeAmount,
+          is_adding: isAddingPoints,
+          reason: pointsReason || 'No reason provided',
+        },
+      });
 
       if (error) throw error;
 
-      // Log the admin action
-      await logAdminAction('edit_points', selectedUser.id, {
-        previous_points: currentPoints,
-        new_points: newPoints,
-        change: isAddingPoints ? `+${changeAmount}` : `-${changeAmount}`,
-        reason: pointsReason || 'No reason provided',
-      });
-
       toast({
-        title: 'Points updated!',
-        description: `${selectedUser.username}'s points ${isAddingPoints ? 'increased' : 'decreased'} by ${changeAmount.toLocaleString()} (now ${newPoints.toLocaleString()}, ${newTier} tier)`,
+        title: '✅ Points updated!',
+        description: data?.message || `Points ${isAddingPoints ? 'added' : 'removed'} successfully`,
       });
       setShowEditPointsDialog(false);
       loadUsers();
@@ -263,7 +249,7 @@ export const UserManagement = () => {
       console.error('Error updating points:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update points',
+        description: `Failed to update points: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {
@@ -372,7 +358,7 @@ export const UserManagement = () => {
     }
   };
 
-  // Make user an admin
+  // Make/remove user as admin via backend function
   const makeUserAdmin = async () => {
     if (!selectedUser || !adminUser) return;
     
@@ -380,36 +366,18 @@ export const UserManagement = () => {
     try {
       const newAdminStatus = !selectedUser.is_admin;
       
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          is_admin: newAdminStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', selectedUser.id);
+      const { data, error } = await supabase.functions.invoke('toggle-admin', {
+        body: {
+          user_id: selectedUser.id,
+          make_admin: newAdminStatus,
+        },
+      });
 
       if (error) throw error;
 
-      // Log the admin action
-      await logAdminAction(newAdminStatus ? 'make_admin' : 'remove_admin', selectedUser.id, {
-        username: selectedUser.username,
-      });
-
-      // Create a notification for the user
-      await supabase
-        .from('notifications')
-        .insert({
-          user_id: selectedUser.id,
-          type: 'system',
-          title: newAdminStatus ? '🛡️ Admin Access Granted' : '🛡️ Admin Access Removed',
-          message: newAdminStatus 
-            ? 'You have been promoted to admin! You can now access the admin dashboard.'
-            : 'Your admin access has been revoked.',
-        });
-
       toast({
-        title: newAdminStatus ? 'Admin created!' : 'Admin removed!',
-        description: `${selectedUser.username} is ${newAdminStatus ? 'now' : 'no longer'} an admin`,
+        title: newAdminStatus ? '🛡️ Admin created!' : '🛡️ Admin removed!',
+        description: data?.message || `${selectedUser.username} is ${newAdminStatus ? 'now' : 'no longer'} an admin`,
       });
       setShowMakeAdminDialog(false);
       loadUsers();
@@ -417,7 +385,7 @@ export const UserManagement = () => {
       console.error('Error updating admin status:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update admin status',
+        description: `Failed to update admin status: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {

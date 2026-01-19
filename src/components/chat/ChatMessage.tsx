@@ -31,6 +31,8 @@ interface ChatMessageProps {
   timestamp: string;
   status?: MessageStatus;
   reactions: Reaction[];
+  senderName?: string;
+  isAdminMessage?: boolean;
   replyTo?: {
     message: string;
     messageType: MessageType;
@@ -40,6 +42,19 @@ interface ChatMessageProps {
   onRemoveReaction: (messageId: string, emoji: string) => void;
   onReply?: (messageId: string) => void;
 }
+
+// Check if message is from admin (prefixed with [RankMe Admin])
+const isAdminMessageContent = (message: string): boolean => {
+  return message.startsWith('[RankMe Admin]');
+};
+
+// Extract clean message content (remove admin prefix)
+const getCleanMessage = (message: string): string => {
+  if (message.startsWith('[RankMe Admin]')) {
+    return message.replace('[RankMe Admin]', '').trim();
+  }
+  return message;
+};
 
 export function ChatMessage({
   id,
@@ -55,11 +70,17 @@ export function ChatMessage({
   timestamp,
   status,
   reactions,
+  senderName,
+  isAdminMessage: isAdminProp,
   onAddReaction,
   onRemoveReaction,
 }: ChatMessageProps) {
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [showMediaViewer, setShowMediaViewer] = useState(false);
+
+  // Determine if this is an admin message (either passed as prop or detected from content)
+  const isAdminMessage = isAdminProp || isAdminMessageContent(message);
+  const displayMessage = getCleanMessage(message);
 
   const { isPressed, handlers } = useLongPress({
     threshold: 500,
@@ -136,7 +157,23 @@ export function ChatMessage({
       default:
         return (
           <div className="px-4 py-2">
-            <p className="text-sm whitespace-pre-wrap break-words">{message}</p>
+            {/* Admin badge & sender name */}
+            {isAdminMessage && !isOwn && (
+              <div className="flex items-center gap-1.5 mb-1">
+                <span 
+                  className="text-xs font-bold tracking-wide uppercase"
+                  style={{ 
+                    color: '#FFD700',
+                    textShadow: '0 0 4px rgba(255,215,0,0.5)',
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    letterSpacing: '0.05em'
+                  }}
+                >
+                  🛡️ RANKME ADMIN
+                </span>
+              </div>
+            )}
+            <p className="text-sm whitespace-pre-wrap break-words">{displayMessage}</p>
           </div>
         );
     }
@@ -174,7 +211,9 @@ export function ChatMessage({
             "max-w-[75%] rounded-2xl transition-transform select-none",
             isOwn
               ? "bg-primary text-primary-foreground rounded-br-md"
-              : "bg-muted rounded-bl-md",
+              : isAdminMessage
+                ? "bg-gradient-to-br from-amber-500/20 to-yellow-600/20 border border-amber-500/40 rounded-bl-md"
+                : "bg-muted rounded-bl-md",
             isPressed && "scale-95 opacity-80"
           )}
         >

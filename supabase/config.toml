@@ -14,3 +14,18 @@ verify_jwt = false
 
 [functions.toggle-admin]
 verify_jwt = false
+
+[functions.initialize-payment]
+verify_jwt = false
+
+[functions.verify-payment]
+verify_jwt = false
+
+[functions.paystack-webhook]
+verify_jwt = false
+
+[functions.expire-premium]
+verify_jwt = false
+
+[functions.check-premium-status]
+verify_jwt = false

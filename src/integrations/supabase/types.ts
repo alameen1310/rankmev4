@@ -688,6 +688,56 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          channel: string | null
+          created_at: string | null
+          currency: string | null
+          id: string
+          metadata: Json | null
+          paid_at: string | null
+          reference: string
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          channel?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          metadata?: Json | null
+          paid_at?: string | null
+          reference: string
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          channel?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          metadata?: Json | null
+          paid_at?: string | null
+          reference?: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           account_name: string | null
@@ -703,9 +753,12 @@ export type Database = {
           equipped_title: string | null
           id: string
           is_admin: boolean | null
+          is_premium: boolean | null
           last_active_date: string | null
           last_chat_date: string | null
+          last_payment_reference: string | null
           longest_streak: number | null
+          premium_expires_at: string | null
           showcase_badges: string[] | null
           tier: string | null
           total_correct_answers: number | null
@@ -730,9 +783,12 @@ export type Database = {
           equipped_title?: string | null
           id: string
           is_admin?: boolean | null
+          is_premium?: boolean | null
           last_active_date?: string | null
           last_chat_date?: string | null
+          last_payment_reference?: string | null
           longest_streak?: number | null
+          premium_expires_at?: string | null
           showcase_badges?: string[] | null
           tier?: string | null
           total_correct_answers?: number | null
@@ -757,9 +813,12 @@ export type Database = {
           equipped_title?: string | null
           id?: string
           is_admin?: boolean | null
+          is_premium?: boolean | null
           last_active_date?: string | null
           last_chat_date?: string | null
+          last_payment_reference?: string | null
           longest_streak?: number | null
+          premium_expires_at?: string | null
           showcase_badges?: string[] | null
           tier?: string | null
           total_correct_answers?: number | null
@@ -1160,6 +1219,7 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: undefined
       }
+      check_premium_expiry: { Args: { user_uuid: string }; Returns: boolean }
       get_user_rank: {
         Args: { user_uuid: string }
         Returns: {

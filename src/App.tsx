@@ -25,6 +25,8 @@ import { Gamification } from "./pages/Gamification";
 import { Notifications } from "./pages/Notifications";
 import { Settings } from "./pages/Settings";
 import { PublicProfile } from "./pages/PublicProfile";
+import { Premium } from "./pages/Premium";
+import { PaymentSuccess } from "./pages/PaymentSuccess";
 import AdminQuestions from "./pages/AdminQuestions";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AddQuestion from "./pages/admin/AddQuestion";
@@ -65,6 +67,8 @@ const App = () => (
                       <Route path="/gamification" element={<Gamification />} />
                       <Route path="/notifications" element={<Notifications />} />
                       <Route path="/settings" element={<Settings />} />
+                      <Route path="/premium" element={<Premium />} />
+                      <Route path="/payment-success" element={<PaymentSuccess />} />
                       <Route path="/user/:userId" element={<PublicProfile />} />
                       <Route path="/admin" element={<AdminDashboard />} />
                       <Route path="/admin/questions" element={<AdminQuestions />} />

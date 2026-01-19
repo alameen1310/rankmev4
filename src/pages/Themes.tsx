@@ -23,7 +23,7 @@ const getCategoryIcon = (category: string) => {
 export function Themes() {
   const navigate = useNavigate();
   const { premiumTheme, setPremiumTheme, availableThemes } = useTheme();
-  const { isPremium, isDevMode } = usePremium();
+  const { isPremium } = usePremium();
   const [selectedCategory, setSelectedCategory] = useState<ThemeCategory>('all');
 
   const categories: { id: ThemeCategory; label: string; emoji: string }[] = [
@@ -42,11 +42,11 @@ export function Themes() {
     : availableThemes.filter(t => t.category === selectedCategory);
 
   const handleSelectTheme = (theme: PremiumTheme) => {
-    if (theme.type === 'premium' && !isPremium && !isDevMode) {
+    if (theme.type === 'premium' && !isPremium) {
       return;
     }
     // Check if seasonal theme is available
-    if (theme.seasonal && !isThemeAvailable(theme) && !isDevMode) {
+    if (theme.seasonal && !isThemeAvailable(theme)) {
       return;
     }
     setPremiumTheme(theme.id);
@@ -167,8 +167,8 @@ export function Themes() {
         <div className="grid grid-cols-2 gap-3">
           {filteredThemes.map(theme => {
             const isActive = theme.id === premiumTheme.id;
-            const canUse = theme.type === 'free' || isPremium || isDevMode;
-            const isSeasonalAvailable = !theme.seasonal || isThemeAvailable(theme) || isDevMode;
+            const canUse = theme.type === 'free' || isPremium;
+            const isSeasonalAvailable = !theme.seasonal || isThemeAvailable(theme);
             const isAvailable = canUse && isSeasonalAvailable;
             
             return (
@@ -270,7 +270,7 @@ export function Themes() {
         </div>
 
         {/* Upgrade CTA (only if not premium) */}
-        {!isPremium && !isDevMode && (
+        {!isPremium && (
           <Card className="p-4 bg-gradient-to-r from-warning/10 via-card to-warning/10 border-warning/30">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center shrink-0">

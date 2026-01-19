@@ -1,13 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
-// Premium access configuration
-const APP_CONFIG = {
-  IS_DEV_MODE: true,
-  FREE_PREMIUM_FOR_ALL: true,
-};
-
-// All unlocked premium features during development
-const DEV_UNLOCKED_FEATURES = [
+// All premium features
+const PREMIUM_FEATURES = [
   'themes',
   'ai_tools',
   'advanced_analytics',
@@ -16,41 +11,90 @@ const DEV_UNLOCKED_FEATURES = [
   'ad_free',
 ] as const;
 
-type PremiumFeature = typeof DEV_UNLOCKED_FEATURES[number];
+type PremiumFeature = typeof PREMIUM_FEATURES[number];
 
 interface PremiumContextType {
   isPremium: boolean;
-  isDevMode: boolean;
+  isLoading: boolean;
+  premiumExpiresAt: string | null;
+  daysRemaining: number;
   hasFeature: (feature: PremiumFeature) => boolean;
   unlockedFeatures: readonly PremiumFeature[];
+  refreshPremiumStatus: () => Promise<void>;
 }
 
 const PremiumContext = createContext<PremiumContextType | undefined>(undefined);
 
 export function PremiumProvider({ children }: { children: React.ReactNode }) {
-  const [isPremium, setIsPremium] = useState(APP_CONFIG.FREE_PREMIUM_FOR_ALL);
-  const [isDevMode] = useState(APP_CONFIG.IS_DEV_MODE);
+  const [isPremium, setIsPremium] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [premiumExpiresAt, setPremiumExpiresAt] = useState<string | null>(null);
+  const [daysRemaining, setDaysRemaining] = useState(0);
 
-  useEffect(() => {
-    // In production, this would check user's subscription status
-    // For now, grant premium to all during development
-    if (APP_CONFIG.FREE_PREMIUM_FOR_ALL) {
-      setIsPremium(true);
+  const refreshPremiumStatus = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setIsPremium(false);
+        setPremiumExpiresAt(null);
+        setDaysRemaining(0);
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await supabase.functions.invoke('check-premium-status', {});
+
+      if (response.error) {
+        console.error('Error checking premium status:', response.error);
+        setIsLoading(false);
+        return;
+      }
+
+      const data = response.data;
+      setIsPremium(data.is_premium || false);
+      setPremiumExpiresAt(data.premium_expires_at || null);
+      setDaysRemaining(data.days_remaining || 0);
+    } catch (error) {
+      console.error('Error fetching premium status:', error);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
+  useEffect(() => {
+    // Check premium status on mount
+    refreshPremiumStatus();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        refreshPremiumStatus();
+      } else if (event === 'SIGNED_OUT') {
+        setIsPremium(false);
+        setPremiumExpiresAt(null);
+        setDaysRemaining(0);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [refreshPremiumStatus]);
+
   const hasFeature = (feature: PremiumFeature): boolean => {
-    if (APP_CONFIG.FREE_PREMIUM_FOR_ALL) return true;
-    return DEV_UNLOCKED_FEATURES.includes(feature);
+    if (isPremium) return true;
+    return false;
   };
 
   return (
     <PremiumContext.Provider 
       value={{ 
         isPremium, 
-        isDevMode, 
+        isLoading,
+        premiumExpiresAt,
+        daysRemaining,
         hasFeature,
-        unlockedFeatures: DEV_UNLOCKED_FEATURES,
+        unlockedFeatures: isPremium ? PREMIUM_FEATURES : [],
+        refreshPremiumStatus,
       }}
     >
       {children}

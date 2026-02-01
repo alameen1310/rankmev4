@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Trophy, Target, Zap, TrendingUp, ChevronRight, Flame, Share2, Gift, Medal } from 'lucide-react';
+import { Trophy, Target, Zap, TrendingUp, ChevronRight, Flame, Share2, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { TierBadge } from '@/components/TierBadge';
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { TierProgress } from '@/components/gamification/TierProgress';
 import { DailyRewards } from '@/components/gamification/DailyRewards';
 import { BadgeCollection } from '@/components/gamification/BadgeCollection';
+import { DailyChallengeCard } from '@/components/daily-challenge/DailyChallengeCard';
 
 export const Dashboard = () => {
   const { profile, isAuthenticated } = useAuth();
@@ -54,6 +55,13 @@ export const Dashboard = () => {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Daily Challenge - MOST PROMINENT */}
+      <section className="px-4 py-3">
+        <div className="max-w-lg mx-auto">
+          <DailyChallengeCard />
         </div>
       </section>
 

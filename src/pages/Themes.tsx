@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Crown, Sparkles, Lock, Gift, Snowflake, Leaf, Sun, Flower2 } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Sparkles, Lock, Snowflake, Leaf } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -54,20 +54,6 @@ export function Themes() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Dev Mode Banner */}
-      {isDevMode && (
-        <div className="bg-gradient-to-r from-success/20 via-success/10 to-success/20 border-b border-success/30 px-4 py-3">
-          <div className="max-w-lg mx-auto flex items-center gap-3">
-            <div className="shrink-0 w-10 h-10 rounded-full bg-success/20 flex items-center justify-center">
-              <Gift className="w-5 h-5 text-success" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-success">Development Mode</p>
-              <p className="text-xs text-muted-foreground">All premium themes unlocked for free!</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="max-w-lg mx-auto p-4 space-y-6">
         {/* Header */}

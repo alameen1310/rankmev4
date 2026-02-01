@@ -27,6 +27,8 @@ import { Settings } from "./pages/Settings";
 import { PublicProfile } from "./pages/PublicProfile";
 import { Premium } from "./pages/Premium";
 import { PaymentSuccess } from "./pages/PaymentSuccess";
+import { DailyChallenge } from "./pages/DailyChallenge";
+import { DailyChallengeLeaderboard } from "./pages/DailyChallengeLeaderboard";
 import AdminQuestions from "./pages/AdminQuestions";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AddQuestion from "./pages/admin/AddQuestion";
@@ -69,6 +71,8 @@ const App = () => (
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/premium" element={<Premium />} />
                       <Route path="/payment-success" element={<PaymentSuccess />} />
+                      <Route path="/daily-challenge" element={<DailyChallenge />} />
+                      <Route path="/daily-challenge/leaderboard" element={<DailyChallengeLeaderboard />} />
                       <Route path="/user/:userId" element={<PublicProfile />} />
                       <Route path="/admin" element={<AdminDashboard />} />
                       <Route path="/admin/questions" element={<AdminQuestions />} />

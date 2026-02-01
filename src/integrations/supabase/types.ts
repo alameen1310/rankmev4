@@ -386,6 +386,135 @@ export type Database = {
           },
         ]
       }
+      daily_challenge_attempts: {
+        Row: {
+          accuracy: number
+          challenge_id: string
+          completed_at: string
+          correct_answers: number
+          created_at: string
+          id: string
+          score: number
+          time_taken_seconds: number
+          total_questions: number
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number
+          challenge_id: string
+          completed_at?: string
+          correct_answers?: number
+          created_at?: string
+          id?: string
+          score?: number
+          time_taken_seconds?: number
+          total_questions?: number
+          user_id: string
+        }
+        Update: {
+          accuracy?: number
+          challenge_id?: string
+          completed_at?: string
+          correct_answers?: number
+          created_at?: string
+          id?: string
+          score?: number
+          time_taken_seconds?: number
+          total_questions?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_challenge_attempts_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "daily_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_challenge_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_challenges: {
+        Row: {
+          challenge_date: string
+          created_at: string
+          id: string
+          question_ids: number[]
+          time_limit_seconds: number
+          total_questions: number
+        }
+        Insert: {
+          challenge_date: string
+          created_at?: string
+          id?: string
+          question_ids: number[]
+          time_limit_seconds?: number
+          total_questions?: number
+        }
+        Update: {
+          challenge_date?: string
+          created_at?: string
+          id?: string
+          question_ids?: number[]
+          time_limit_seconds?: number
+          total_questions?: number
+        }
+        Relationships: []
+      }
+      daily_leaderboards: {
+        Row: {
+          accuracy: number
+          challenge_id: string
+          id: string
+          rank: number
+          score: number
+          time_taken_seconds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accuracy: number
+          challenge_id: string
+          id?: string
+          rank: number
+          score: number
+          time_taken_seconds: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accuracy?: number
+          challenge_id?: string
+          id?: string
+          rank?: number
+          score?: number
+          time_taken_seconds?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_leaderboards_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "daily_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_leaderboards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_streaks: {
         Row: {
           created_at: string | null
@@ -1220,6 +1349,7 @@ export type Database = {
         Returns: undefined
       }
       check_premium_expiry: { Args: { user_uuid: string }; Returns: boolean }
+      get_or_create_daily_challenge: { Args: never; Returns: string }
       get_user_rank: {
         Args: { user_uuid: string }
         Returns: {
@@ -1256,6 +1386,10 @@ export type Database = {
         Returns: undefined
       }
       update_chat_streak: { Args: { user_uuid: string }; Returns: undefined }
+      update_daily_leaderboard_ranks: {
+        Args: { p_challenge_id: string }
+        Returns: undefined
+      }
       update_user_streak: { Args: { user_uuid: string }; Returns: undefined }
     }
     Enums: {

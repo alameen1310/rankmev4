@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.check-premium-status]
 verify_jwt = false
+
+[functions.daily-challenge]
+verify_jwt = false

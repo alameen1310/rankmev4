@@ -9,10 +9,10 @@ export function InstallPrompt() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Delay showing prompt for better UX
+    // Show prompt immediately with a brief delay for page load
     const timer = setTimeout(() => {
       setIsVisible(shouldShowInstallPrompt());
-    }, 3000);
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, [shouldShowInstallPrompt]);

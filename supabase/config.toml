@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.daily-challenge]
 verify_jwt = false
+
+[functions.friend-suggestions]
+verify_jwt = false

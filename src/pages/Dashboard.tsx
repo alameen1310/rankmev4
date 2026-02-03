@@ -12,6 +12,7 @@ import { TierProgress } from '@/components/gamification/TierProgress';
 import { DailyRewards } from '@/components/gamification/DailyRewards';
 import { BadgeCollection } from '@/components/gamification/BadgeCollection';
 import { DailyChallengeCard } from '@/components/daily-challenge/DailyChallengeCard';
+import { FriendSuggestions } from '@/components/social/FriendSuggestions';
 
 export const Dashboard = () => {
   const { profile, isAuthenticated } = useAuth();
@@ -156,6 +157,13 @@ export const Dashboard = () => {
       <section className="px-4 py-3">
         <div className="max-w-lg mx-auto">
           <DailyRewards />
+        </div>
+      </section>
+
+      {/* Friend Suggestions - Social Discovery */}
+      <section className="px-4 py-3">
+        <div className="max-w-lg mx-auto">
+          <FriendSuggestions compact />
         </div>
       </section>
 

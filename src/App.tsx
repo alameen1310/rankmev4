@@ -29,6 +29,7 @@ import { Premium } from "./pages/Premium";
 import { PaymentSuccess } from "./pages/PaymentSuccess";
 import { DailyChallenge } from "./pages/DailyChallenge";
 import { DailyChallengeLeaderboard } from "./pages/DailyChallengeLeaderboard";
+import { Install } from "./pages/Install";
 import AdminQuestions from "./pages/AdminQuestions";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AddQuestion from "./pages/admin/AddQuestion";
@@ -73,10 +74,10 @@ const App = () => (
                       <Route path="/payment-success" element={<PaymentSuccess />} />
                       <Route path="/daily-challenge" element={<DailyChallenge />} />
                       <Route path="/daily-challenge/leaderboard" element={<DailyChallengeLeaderboard />} />
+                      <Route path="/install" element={<Install />} />
                       <Route path="/user/:userId" element={<PublicProfile />} />
                       <Route path="/admin" element={<AdminDashboard />} />
                       <Route path="/admin/questions" element={<AdminQuestions />} />
-                      <Route path="/admin/add-question" element={<AddQuestion />} />
                       <Route path="/admin/manage" element={<ManageQuestions />} />
                       <Route path="/admin/users" element={<UserManagement />} />
                       <Route path="/admin/analytics" element={<AdminAnalytics />} />

@@ -53,6 +53,7 @@ import { SwipeableMessage } from '@/components/chat/SwipeableMessage';
 import { ReplyPreview } from '@/components/chat/ReplyPreview';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useMediaUploader } from '@/hooks/useMediaUploader';
+import { FriendSuggestions } from '@/components/social/FriendSuggestions';
 
 type Tab = 'friends' | 'requests' | 'search';
 
@@ -674,17 +675,22 @@ export function Friends() {
         {activeTab === 'friends' && (
           <div className="space-y-3">
             {friends.length === 0 ? (
-              <Card className="p-8 text-center">
-                <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <h3 className="font-semibold mb-2">No friends yet</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Search for users to add as friends
-                </p>
-                <Button onClick={() => setActiveTab('search')}>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Find Friends
-                </Button>
-              </Card>
+              <div className="space-y-4">
+                <Card className="p-6 text-center">
+                  <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                  <h3 className="font-semibold mb-2">No friends yet</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Challenge players like you to climb faster
+                  </p>
+                  <Button onClick={() => setActiveTab('search')}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Find Friends
+                  </Button>
+                </Card>
+                
+                {/* Friend Suggestions when no friends */}
+                <FriendSuggestions maxItems={10} />
+              </div>
             ) : (
               friends.map(friend => (
                 <Card key={friend.id} className="p-4">

@@ -109,15 +109,11 @@ export function usePWA() {
     // Don't show if not installable
     if (!isInstallable) return false;
 
-    // Check if user has completed at least one quiz
-    const hasCompletedQuiz = localStorage.getItem('quiz-completed') === 'true';
-    if (!hasCompletedQuiz) return false;
-
-    // Check if dismissed recently (within 7 days)
+    // Check if dismissed recently (within 3 days)
     const dismissedAt = localStorage.getItem('pwa-install-dismissed');
     if (dismissedAt) {
       const daysSinceDismissed = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
-      if (daysSinceDismissed < 7) return false;
+      if (daysSinceDismissed < 3) return false;
     }
 
     return true;

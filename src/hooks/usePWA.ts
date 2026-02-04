@@ -21,8 +21,18 @@ export function usePWA() {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [needsRefresh, setNeedsRefresh] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
 
   useEffect(() => {
+    // Detect platform
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const iOS = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
+    const android = /android/i.test(userAgent);
+    
+    setIsIOS(iOS);
+    setIsAndroid(android);
+
     // Check if already installed
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
       || (window.navigator as any).standalone === true
@@ -30,7 +40,12 @@ export function usePWA() {
     
     setIsInstalled(isStandalone);
 
-    // Listen for install prompt
+    // On iOS, we can show install prompt (manual instructions) if not installed
+    if (iOS && !isStandalone) {
+      setIsInstallable(true);
+    }
+
+    // Listen for install prompt (Android/Chrome)
     const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
       setInstallPrompt(e);
@@ -79,23 +94,31 @@ export function usePWA() {
   }, []);
 
   const promptInstall = useCallback(async () => {
-    if (!installPrompt) return false;
-
-    try {
-      await installPrompt.prompt();
-      const { outcome } = await installPrompt.userChoice;
-      
-      if (outcome === 'accepted') {
-        setInstallPrompt(null);
-        setIsInstallable(false);
-        return true;
+    // For Android with native prompt
+    if (installPrompt) {
+      try {
+        await installPrompt.prompt();
+        const { outcome } = await installPrompt.userChoice;
+        
+        if (outcome === 'accepted') {
+          setInstallPrompt(null);
+          setIsInstallable(false);
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error('Error prompting install:', error);
+        return false;
       }
-      return false;
-    } catch (error) {
-      console.error('Error prompting install:', error);
-      return false;
     }
-  }, [installPrompt]);
+    
+    // For iOS, we return true to indicate the prompt was "shown" (manual instructions)
+    if (isIOS) {
+      return true;
+    }
+    
+    return false;
+  }, [installPrompt, isIOS]);
 
   const dismissInstallPrompt = useCallback(() => {
     setIsInstallable(false);
@@ -133,6 +156,9 @@ export function usePWA() {
     isInstalled,
     isOnline,
     needsRefresh,
+    isIOS,
+    isAndroid,
+    hasNativePrompt: !!installPrompt,
     promptInstall,
     dismissInstallPrompt,
     shouldShowInstallPrompt,

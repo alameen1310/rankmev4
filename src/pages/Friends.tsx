@@ -54,6 +54,7 @@ import { ReplyPreview } from '@/components/chat/ReplyPreview';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useMediaUploader } from '@/hooks/useMediaUploader';
 import { FriendSuggestions } from '@/components/social/FriendSuggestions';
+import { EnhancedFriendSuggestions } from '@/components/social/EnhancedFriendSuggestions';
 
 type Tab = 'friends' | 'requests' | 'search';
 
@@ -807,6 +808,7 @@ export function Friends() {
 
         {activeTab === 'search' && (
           <div className="space-y-4">
+            {/* Search Input */}
             <div className="flex gap-2">
               <Input
                 value={searchQuery}
@@ -823,56 +825,64 @@ export function Friends() {
               </Button>
             </div>
 
-            <div className="space-y-3">
-              {searchResults.map(searchUser => (
-                <Card key={searchUser.id} className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage src={searchUser.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {searchUser.username?.[0]?.toUpperCase() || '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold truncate">
-                          {searchUser.display_name || searchUser.username}
-                        </p>
-                        {searchUser.equipped_title && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
-                            {searchUser.equipped_title}
-                          </span>
+            {/* Search Results (if any) */}
+            {searchResults.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-muted-foreground">Search Results</h4>
+                {searchResults.map(searchUser => (
+                  <Card key={searchUser.id} className="p-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={searchUser.avatar_url || undefined} />
+                        <AvatarFallback>
+                          {searchUser.username?.[0]?.toUpperCase() || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold truncate">
+                            {searchUser.display_name || searchUser.username}
+                          </p>
+                          {searchUser.equipped_title && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                              {searchUser.equipped_title}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          {searchUser.tier && <TierBadge tier={searchUser.tier as any} size="sm" />}
+                        </div>
+                        {searchUser.showcase_badges && searchUser.showcase_badges.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1.5">
+                            {searchUser.showcase_badges.slice(0, 3).map((badgeName, idx) => (
+                              <span 
+                                key={idx} 
+                                className="text-xs px-1.5 py-0.5 rounded bg-accent text-accent-foreground"
+                                title={badgeName}
+                              >
+                                🏆 {badgeName.length > 10 ? badgeName.slice(0, 10) + '...' : badgeName}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        {searchUser.tier && <TierBadge tier={searchUser.tier as any} size="sm" />}
-                      </div>
-                      {/* Showcase Badges */}
-                      {searchUser.showcase_badges && searchUser.showcase_badges.length > 0 && (
-                        <div className="flex items-center gap-1 mt-1.5">
-                          {searchUser.showcase_badges.slice(0, 3).map((badgeName, idx) => (
-                            <span 
-                              key={idx} 
-                              className="text-xs px-1.5 py-0.5 rounded bg-accent text-accent-foreground"
-                              title={badgeName}
-                            >
-                              🏆 {badgeName.length > 10 ? badgeName.slice(0, 10) + '...' : badgeName}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <Button 
+                        variant="default" 
+                        size="sm"
+                        onClick={() => handleSendRequest(searchUser.id)}
+                      >
+                        <UserPlus className="w-4 h-4 mr-1" />
+                        Add
+                      </Button>
                     </div>
-                    <Button 
-                      variant="default" 
-                      size="sm"
-                      onClick={() => handleSendRequest(searchUser.id)}
-                    >
-                      <UserPlus className="w-4 h-4 mr-1" />
-                      Add
-                    </Button>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Enhanced Friend Suggestions */}
+            <div className="pt-2">
+              <EnhancedFriendSuggestions maxItems={10} />
             </div>
           </div>
         )}

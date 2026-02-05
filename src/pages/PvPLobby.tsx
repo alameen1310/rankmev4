@@ -7,8 +7,13 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Loader2, Swords, Users, Clock, Trophy, ArrowLeft } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Swords, Users, Clock, Trophy, ArrowLeft, Star, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PvPModeSelector } from '@/components/pvp/PvPModeSelector';
+import { PVP_MODES, type PvPModeType } from '@/types/quiz-modes';
+
+type LobbyStep = 'mode-select' | 'subject-select' | 'create-join';
 
 export function PvPLobby() {
   const { user, profile } = useAuth();
@@ -19,6 +24,11 @@ export function PvPLobby() {
   const [battleMode, setBattleMode] = useState<'create' | 'join'>('create');
   const [isLoading, setIsLoading] = useState(false);
   const [openBattles, setOpenBattles] = useState<Battle[]>([]);
+  
+  // New state for mode selection
+  const [step, setStep] = useState<LobbyStep>('mode-select');
+  const [selectedPvPMode, setSelectedPvPMode] = useState<PvPModeType | null>(null);
+  const [rankedMatchesToday, setRankedMatchesToday] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -51,16 +61,58 @@ export function PvPLobby() {
     'Computer Science': 'computer-science',
   };
 
+  const handleModeSelect = (mode: PvPModeType) => {
+    setSelectedPvPMode(mode);
+    const config = PVP_MODES[mode];
+    
+    if (config.allowSubjectSelection) {
+      setStep('subject-select');
+    } else {
+      // For ranked/race, skip subject selection
+      setStep('create-join');
+    }
+  };
+
+  const handleSubjectNext = () => {
+    setStep('create-join');
+  };
+
+  const handleBack = () => {
+    if (step === 'create-join') {
+      const config = selectedPvPMode ? PVP_MODES[selectedPvPMode] : null;
+      if (config?.allowSubjectSelection) {
+        setStep('subject-select');
+      } else {
+        setStep('mode-select');
+        setSelectedPvPMode(null);
+      }
+    } else if (step === 'subject-select') {
+      setStep('mode-select');
+      setSelectedPvPMode(null);
+    } else {
+      navigate(-1);
+    }
+  };
+
   const handleCreateBattle = async () => {
-    if (!selectedSubject || !user) {
+    if (!user) {
+      toast.error('Please sign in to play');
+      return;
+    }
+
+    if (selectedPvPMode && PVP_MODES[selectedPvPMode].allowSubjectSelection && !selectedSubject) {
       toast.error('Please select a subject');
       return;
     }
 
     setIsLoading(true);
     try {
-      const subject = subjects.find(s => s.id === selectedSubject);
-      const subjectSlug = subject ? subjectSlugMap[subject.name] || 'mathematics' : 'mathematics';
+      let subjectSlug = 'mathematics';
+      
+      if (selectedSubject) {
+        const subject = subjects.find(s => s.id === selectedSubject);
+        subjectSlug = subject ? subjectSlugMap[subject.name] || 'mathematics' : 'mathematics';
+      }
       
       const battle = await createBattle(user.id, subjectSlug as any, false);
       toast.success('Battle created! Waiting for opponent...');
@@ -113,8 +165,6 @@ export function PvPLobby() {
     }
   };
 
-  const selectedSubjectData = subjects.find(s => s.id === selectedSubject);
-
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -128,12 +178,14 @@ export function PvPLobby() {
     );
   }
 
+  const modeConfig = selectedPvPMode ? PVP_MODES[selectedPvPMode] : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 pb-24">
       <div className="max-w-lg mx-auto p-4 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={handleBack}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -142,42 +194,48 @@ export function PvPLobby() {
               PvP Arena
             </h1>
             <p className="text-sm text-muted-foreground">
-              Challenge others in real-time quiz battles
+              {step === 'mode-select' && 'Choose your battle mode'}
+              {step === 'subject-select' && `${modeConfig?.name} - Select subject`}
+              {step === 'create-join' && `${modeConfig?.name} - Find opponent`}
             </p>
           </div>
         </div>
 
-        {/* Mode Toggle */}
-        <div className="flex gap-2 p-1 bg-muted rounded-xl">
-          <button
-            onClick={() => setBattleMode('create')}
-            className={cn(
-              "flex-1 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2",
-              battleMode === 'create'
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Trophy className="w-4 h-4" />
-            Create Battle
-          </button>
-          <button
-            onClick={() => setBattleMode('join')}
-            className={cn(
-              "flex-1 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2",
-              battleMode === 'join'
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Users className="w-4 h-4" />
-            Join Battle
-          </button>
-        </div>
+        {/* Step 1: Mode Selection */}
+        {step === 'mode-select' && (
+          <>
+            <PvPModeSelector 
+              onModeSelect={handleModeSelect}
+              rankedMatchesToday={rankedMatchesToday}
+            />
+            
+            {/* Info Card */}
+            <Card className="p-4 bg-muted/50">
+              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-primary" />
+                XP vs Rank
+              </h3>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p className="flex items-center gap-2">
+                  <Badge variant="secondary" className="bg-success/20 text-success text-[10px]">
+                    <Star className="w-2.5 h-2.5 mr-0.5" />XP
+                  </Badge>
+                  Casual & Race modes - practice without pressure
+                </p>
+                <p className="flex items-center gap-2">
+                  <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 text-[10px]">
+                    <Trophy className="w-2.5 h-2.5 mr-0.5" />Rank
+                  </Badge>
+                  Ranked Duel - affects your leaderboard position
+                </p>
+              </div>
+            </Card>
+          </>
+        )}
 
-        {battleMode === 'create' ? (
+        {/* Step 2: Subject Selection (for Casual Duel) */}
+        {step === 'subject-select' && modeConfig && (
           <div className="space-y-6">
-            {/* Subject Selection */}
             <Card className="p-5">
               <h3 className="font-semibold mb-4">Select Subject</h3>
               <div className="grid grid-cols-2 gap-3">
@@ -197,127 +255,209 @@ export function PvPLobby() {
                     <span className="text-xs text-muted-foreground block">
                       {subject.question_count} questions
                     </span>
+                    {selectedSubject === subject.id && (
+                      <Check className="w-4 h-4 text-primary absolute top-2 right-2" />
+                    )}
                   </button>
                 ))}
               </div>
             </Card>
 
-            {/* Battle Settings */}
-            <Card className="p-5">
-              <h3 className="font-semibold mb-4">Battle Settings</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">Mode</span>
-                  </div>
-                  <span className="font-semibold text-sm">1v1 Duel</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">Time per Question</span>
-                  </div>
-                  <span className="font-semibold text-sm">20 seconds</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">Questions</span>
-                  </div>
-                  <span className="font-semibold text-sm">10 questions</span>
-                </div>
-              </div>
-            </Card>
-
-            {/* Create Button */}
             <Button
-              onClick={handleCreateBattle}
-              disabled={isLoading || !selectedSubject}
-              className="w-full h-14 text-lg font-bold"
-              size="lg"
+              onClick={handleSubjectNext}
+              disabled={!selectedSubject}
+              className="w-full h-12 font-bold"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Creating Battle...
-                </>
-              ) : (
-                <>
-                  <Swords className="w-5 h-5 mr-2" />
-                  Create Battle
-                </>
-              )}
+              Continue
             </Button>
           </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Join by Code */}
-            <Card className="p-5">
-              <h3 className="font-semibold mb-4">Enter Room Code</h3>
-              <Input
-                value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
-                placeholder="E.g., A1B2C3"
-                className="text-center text-xl font-mono tracking-widest h-14"
-                maxLength={6}
-              />
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                {roomCode.length}/6 characters
-              </p>
-              <Button
-                onClick={handleJoinByCode}
-                className="w-full mt-4"
-                disabled={roomCode.length < 6 || isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Joining...
-                  </>
-                ) : (
-                  'Join by Code'
-                )}
-              </Button>
-            </Card>
+        )}
 
-            {/* Open Battles */}
-            <Card className="p-5">
-              <h3 className="font-semibold mb-4">Open Battles</h3>
-              {openBattles.length > 0 ? (
-                <div className="space-y-3">
-                  {openBattles.map(battle => (
-                    <div
-                      key={battle.id}
-                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                    >
-                      <div>
-                        <p className="font-medium text-sm">
-                          {subjects.find(s => s.id === battle.subject_id)?.name || 'Quiz'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {battle.participants.length}/2 players
-                        </p>
+        {/* Step 3: Create/Join Battle */}
+        {step === 'create-join' && modeConfig && (
+          <>
+            {/* Mode Toggle */}
+            <div className="flex gap-2 p-1 bg-muted rounded-xl">
+              <button
+                onClick={() => setBattleMode('create')}
+                className={cn(
+                  "flex-1 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2",
+                  battleMode === 'create'
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Trophy className="w-4 h-4" />
+                Create Battle
+              </button>
+              <button
+                onClick={() => setBattleMode('join')}
+                className={cn(
+                  "flex-1 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2",
+                  battleMode === 'join'
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Users className="w-4 h-4" />
+                Join Battle
+              </button>
+            </div>
+
+            {battleMode === 'create' ? (
+              <div className="space-y-6">
+                {/* Battle Settings */}
+                <Card className="p-5">
+                  <h3 className="font-semibold mb-4">Battle Settings</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Swords className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">Mode</span>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => handleJoinBattle(battle.id)}
-                        disabled={isLoading}
-                      >
-                        Join
-                      </Button>
+                      <span className="font-semibold text-sm">{modeConfig.name}</span>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Swords className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No open battles</p>
-                  <p className="text-sm">Create one to get started!</p>
-                </div>
-              )}
-            </Card>
-          </div>
+                    {modeConfig.allowSubjectSelection && selectedSubject && (
+                      <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">
+                            {subjects.find(s => s.id === selectedSubject)?.icon}
+                          </span>
+                          <span className="text-sm">Subject</span>
+                        </div>
+                        <span className="font-semibold text-sm">
+                          {subjects.find(s => s.id === selectedSubject)?.name}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">Time per Question</span>
+                      </div>
+                      <span className="font-semibold text-sm">{modeConfig.timePerQuestion}s</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">Questions</span>
+                      </div>
+                      <span className="font-semibold text-sm">{modeConfig.questionCount}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                      <div className="flex items-center gap-2">
+                        {modeConfig.rewardType === 'rank' ? (
+                          <Trophy className="w-4 h-4 text-yellow-500" />
+                        ) : (
+                          <Star className="w-4 h-4 text-success" />
+                        )}
+                        <span className="text-sm">Reward</span>
+                      </div>
+                      <Badge 
+                        variant="secondary" 
+                        className={cn(
+                          "text-[10px]",
+                          modeConfig.rewardType === 'rank' 
+                            ? "bg-yellow-500/20 text-yellow-600"
+                            : "bg-success/20 text-success"
+                        )}
+                      >
+                        {modeConfig.rewardType === 'rank' ? 'RANK' : 'XP'}
+                      </Badge>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Create Button */}
+                <Button
+                  onClick={handleCreateBattle}
+                  disabled={isLoading}
+                  className="w-full h-14 text-lg font-bold"
+                  size="lg"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Creating Battle...
+                    </>
+                  ) : (
+                    <>
+                      <Swords className="w-5 h-5 mr-2" />
+                      Create Battle
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Join by Code */}
+                <Card className="p-5">
+                  <h3 className="font-semibold mb-4">Enter Room Code</h3>
+                  <Input
+                    value={roomCode}
+                    onChange={(e) => setRoomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                    placeholder="E.g., A1B2C3"
+                    className="text-center text-xl font-mono tracking-widest h-14"
+                    maxLength={6}
+                  />
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    {roomCode.length}/6 characters
+                  </p>
+                  <Button
+                    onClick={handleJoinByCode}
+                    className="w-full mt-4"
+                    disabled={roomCode.length < 6 || isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Joining...
+                      </>
+                    ) : (
+                      'Join by Code'
+                    )}
+                  </Button>
+                </Card>
+
+                {/* Open Battles */}
+                <Card className="p-5">
+                  <h3 className="font-semibold mb-4">Open Battles</h3>
+                  {openBattles.length > 0 ? (
+                    <div className="space-y-3">
+                      {openBattles.map(battle => (
+                        <div
+                          key={battle.id}
+                          className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                        >
+                          <div>
+                            <p className="font-medium text-sm">
+                              {subjects.find(s => s.id === battle.subject_id)?.name || 'Quiz'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {battle.participants.length}/2 players
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => handleJoinBattle(battle.id)}
+                            disabled={isLoading}
+                          >
+                            Join
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Swords className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No open battles</p>
+                      <p className="text-sm">Create one to get started!</p>
+                    </div>
+                  )}
+                </Card>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

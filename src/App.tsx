@@ -78,6 +78,7 @@ const App = () => (
                       <Route path="/user/:userId" element={<PublicProfile />} />
                       <Route path="/admin" element={<AdminDashboard />} />
                       <Route path="/admin/questions" element={<AdminQuestions />} />
+                      <Route path="/admin/add-question" element={<AddQuestion />} />
                       <Route path="/admin/manage" element={<ManageQuestions />} />
                       <Route path="/admin/users" element={<UserManagement />} />
                       <Route path="/admin/analytics" element={<AdminAnalytics />} />

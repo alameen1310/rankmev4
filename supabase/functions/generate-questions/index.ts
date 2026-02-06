@@ -7,64 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Topic configurations for each subject
-const SUBJECT_TOPICS: Record<string, { name: string; count: number }[]> = {
-  Mathematics: [
-    { name: "Number Bases", count: 80 },
-    { name: "Algebra", count: 150 },
-    { name: "Geometry", count: 120 },
-    { name: "Trigonometry", count: 100 },
-    { name: "Calculus", count: 80 },
-    { name: "Statistics", count: 80 },
-    { name: "Probability", count: 60 },
-    { name: "Vectors", count: 60 },
-    { name: "Matrices", count: 50 },
-    { name: "Logarithms", count: 60 },
-    { name: "Indices", count: 50 },
-    { name: "Surds", count: 50 },
-    { name: "Quadratic Equations", count: 60 },
-  ],
-  English: [
-    { name: "Lexis and Structure", count: 200 },
-    { name: "Comprehension", count: 150 },
-    { name: "Oral English", count: 120 },
-    { name: "Grammar", count: 180 },
-    { name: "Vocabulary", count: 150 },
-    { name: "Idioms and Proverbs", count: 100 },
-    { name: "Antonyms and Synonyms", count: 100 },
-  ],
-  Physics: [
-    { name: "Mechanics", count: 200 },
-    { name: "Waves and Optics", count: 120 },
-    { name: "Electricity", count: 180 },
-    { name: "Modern Physics", count: 100 },
-    { name: "Thermodynamics", count: 100 },
-    { name: "Electromagnetism", count: 100 },
-    { name: "Motion", count: 100 },
-    { name: "Energy", count: 100 },
-  ],
-  Chemistry: [
-    { name: "Organic Chemistry", count: 200 },
-    { name: "Inorganic Chemistry", count: 180 },
-    { name: "Physical Chemistry", count: 150 },
-    { name: "Environmental Chemistry", count: 80 },
-    { name: "Electrochemistry", count: 80 },
-    { name: "Periodic Table", count: 100 },
-    { name: "Chemical Bonding", count: 100 },
-    { name: "Acids and Bases", count: 110 },
-  ],
-  Biology: [
-    { name: "Cell Biology", count: 150 },
-    { name: "Genetics", count: 180 },
-    { name: "Ecology", count: 120 },
-    { name: "Human Physiology", count: 180 },
-    { name: "Plant Physiology", count: 120 },
-    { name: "Evolution", count: 80 },
-    { name: "Microbiology", count: 80 },
-    { name: "Reproduction", count: 90 },
-  ],
-};
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -94,12 +36,11 @@ serve(async (req) => {
       throw new Error(`Subject "${subject}" not found`);
     }
 
-    const topicToUse = topic || SUBJECT_TOPICS[subject]?.[0]?.name || "General";
-    const actualCount = Math.min(count, 20); // Max 20 questions per request
+    const topicToUse = topic || "General";
+    const actualCount = Math.min(count, 20);
 
     console.log(`Generating ${actualCount} ${subject} questions on ${topicToUse}...`);
 
-    // Generate questions using AI
     const prompt = buildQuestionPrompt(subject, topicToUse, actualCount, difficulty);
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -113,15 +54,27 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a JAMB (Joint Admissions and Matriculation Board) question generator for Nigerian students. 
+            content: `You are a JAMB (Joint Admissions and Matriculation Board) question generator for Nigerian students.
 Generate authentic JAMB-style multiple choice questions that:
 - Are appropriate for Nigerian secondary school leavers
 - Follow official JAMB format and difficulty
 - Have exactly 4 options (A, B, C, D)
 - Include clear explanations
-- Cover the specified topic thoroughly
 
-IMPORTANT: Return ONLY valid JSON array, no markdown, no code blocks.`
+MATH FORMATTING RULES (CRITICAL):
+- Write fractions using Unicode fraction slash or superscript/subscript: ½, ⅓, ¼, ⅔, ¾, ⅕, etc.
+- For complex fractions, write as: numerator⁄denominator (e.g., 3⁄5, 7⁄12)
+- Use Unicode superscripts for powers: x², x³, x⁴, x⁵, x⁶, x⁷, x⁸, x⁹, xⁿ
+- Use Unicode subscripts for bases: x₁, x₂, a₀, a₁, base₂, base₈, base₁₀
+- Write roots as: √2, √3, ³√8, ⁴√16
+- Write trigonometric functions naturally: sin 30°, cos 60°, tan 45°
+- Use the degree symbol: 30°, 45°, 60°, 90°
+- Use proper math symbols: ×, ÷, ±, ≤, ≥, ≠, ≈, π, θ, α, β, Σ, ∫, ∞
+- NEVER use LaTeX notation like \\frac{}{} or \\sqrt{}
+- NEVER use ASCII fractions like a/b for math expressions
+- Examples: "Find the value of sin² 30° + cos² 60°" NOT "Find the value of sin^2(30)/cos^2(60)"
+
+IMPORTANT: Return ONLY a valid JSON array. No markdown, no code blocks, no extra text.`
           },
           {
             role: "user",
@@ -129,13 +82,27 @@ IMPORTANT: Return ONLY valid JSON array, no markdown, no code blocks.`
           }
         ],
         temperature: 0.7,
-        max_tokens: 8000,
+        max_tokens: 12000,
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("AI API error:", errorText);
+      console.error("AI API error:", aiResponse.status, errorText);
+      
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Rate limit exceeded. Please wait a moment and try again." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ success: false, error: "AI credits exhausted. Please add credits to continue." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       throw new Error(`AI API error: ${aiResponse.status}`);
     }
 
@@ -146,65 +113,51 @@ IMPORTANT: Return ONLY valid JSON array, no markdown, no code blocks.`
       throw new Error("No content returned from AI");
     }
 
-    // Parse the JSON response
-    let questions;
-    try {
-      // Clean up the response - remove markdown code blocks if present
-      let cleanContent = content.trim();
-      if (cleanContent.startsWith("```json")) {
-        cleanContent = cleanContent.slice(7);
-      } else if (cleanContent.startsWith("```")) {
-        cleanContent = cleanContent.slice(3);
-      }
-      if (cleanContent.endsWith("```")) {
-        cleanContent = cleanContent.slice(0, -3);
-      }
-      cleanContent = cleanContent.trim();
-      
-      questions = JSON.parse(cleanContent);
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", content);
-      throw new Error("Failed to parse AI response as JSON");
+    // Robust JSON parsing
+    const questions = parseAIResponse(content);
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      console.error("Parsed result is not a valid array:", typeof questions);
+      throw new Error("AI did not return a valid array of questions");
     }
 
-    if (!Array.isArray(questions)) {
-      throw new Error("AI did not return an array of questions");
-    }
+    console.log(`Parsed ${questions.length} questions, inserting...`);
 
     // Insert questions into database
     const insertedQuestions = [];
     for (const q of questions) {
+      if (!q.question || !q.options) {
+        console.warn("Skipping malformed question:", JSON.stringify(q).slice(0, 100));
+        continue;
+      }
+
+      const questionDifficulty = q.difficulty || (difficulty === "mixed" ? getRandomDifficulty() : difficulty);
+
       const { data, error } = await supabase
         .from("questions")
         .insert({
           subject_id: subjectData.id,
           question_text: q.question,
-          option_a: q.options?.A || q.options?.[0] || q.option_a,
-          option_b: q.options?.B || q.options?.[1] || q.option_b,
-          option_c: q.options?.C || q.options?.[2] || q.option_c,
-          option_d: q.options?.D || q.options?.[3] || q.option_d,
+          option_a: q.options?.A || q.options?.[0] || q.option_a || "",
+          option_b: q.options?.B || q.options?.[1] || q.option_b || "",
+          option_c: q.options?.C || q.options?.[2] || q.option_c || "",
+          option_d: q.options?.D || q.options?.[3] || q.option_d || "",
           correct_answer: q.correct_answer || q.correctAnswer || "A",
-          difficulty: q.difficulty || difficulty === "mixed" ? getRandomDifficulty() : difficulty,
-          points_value: getPointsValue(q.difficulty || "medium"),
+          difficulty: questionDifficulty,
+          points_value: getPointsValue(questionDifficulty),
           explanation: q.explanation || null,
         })
         .select()
         .single();
 
       if (error) {
-        console.error("Insert error:", error);
+        console.error("Insert error for question:", error.message);
       } else if (data) {
         insertedQuestions.push(data);
       }
     }
 
-    // Update subject question count
-    await supabase
-      .from("subjects")
-      .update({ question_count: supabase.rpc("get_question_count", { subject_id: subjectData.id }) })
-      .eq("id", subjectData.id);
-
-    console.log(`Successfully inserted ${insertedQuestions.length} questions`);
+    console.log(`Successfully inserted ${insertedQuestions.length} of ${questions.length} questions`);
 
     return new Response(
       JSON.stringify({
@@ -213,7 +166,6 @@ IMPORTANT: Return ONLY valid JSON array, no markdown, no code blocks.`
         topic: topicToUse,
         generated: questions.length,
         inserted: insertedQuestions.length,
-        questions: insertedQuestions,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -227,10 +179,114 @@ IMPORTANT: Return ONLY valid JSON array, no markdown, no code blocks.`
   }
 });
 
+function parseAIResponse(content: string): any[] {
+  // Step 1: Clean up markdown code blocks
+  let cleaned = content.trim();
+  if (cleaned.startsWith("```json")) {
+    cleaned = cleaned.slice(7);
+  } else if (cleaned.startsWith("```")) {
+    cleaned = cleaned.slice(3);
+  }
+  if (cleaned.endsWith("```")) {
+    cleaned = cleaned.slice(0, -3);
+  }
+  cleaned = cleaned.trim();
+
+  // Step 2: Try direct parse
+  try {
+    const result = JSON.parse(cleaned);
+    if (Array.isArray(result)) return result;
+    if (result.questions && Array.isArray(result.questions)) return result.questions;
+    return [];
+  } catch {
+    // Continue to recovery
+  }
+
+  // Step 3: Try to find the JSON array in the content
+  const arrayStart = cleaned.indexOf("[");
+  if (arrayStart === -1) {
+    console.error("No JSON array found in response");
+    throw new Error("Failed to parse AI response - no array found");
+  }
+
+  let jsonStr = cleaned.slice(arrayStart);
+
+  // Step 4: Try parsing as-is
+  try {
+    return JSON.parse(jsonStr);
+  } catch {
+    // Continue to recovery
+  }
+
+  // Step 5: Handle truncated JSON - find the last complete object
+  console.log("Attempting truncated JSON recovery...");
+  
+  // Find all complete objects by matching closing braces followed by comma or array end
+  let lastValidEnd = -1;
+  let braceDepth = 0;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = 0; i < jsonStr.length; i++) {
+    const char = jsonStr[i];
+    
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (char === '{') braceDepth++;
+    if (char === '}') {
+      braceDepth--;
+      if (braceDepth === 0) {
+        lastValidEnd = i;
+      }
+    }
+  }
+
+  if (lastValidEnd > 0) {
+    // Truncate to last complete object and close the array
+    const truncated = jsonStr.slice(0, lastValidEnd + 1) + "]";
+    try {
+      const result = JSON.parse(truncated);
+      console.log(`Recovered ${result.length} questions from truncated response`);
+      return result;
+    } catch (e) {
+      console.error("Recovery parse also failed:", e);
+    }
+  }
+
+  throw new Error("Failed to parse AI response as JSON");
+}
+
 function buildQuestionPrompt(subject: string, topic: string, count: number, difficulty: string): string {
-  const difficultyInstruction = difficulty === "mixed" 
+  const difficultyInstruction = difficulty === "mixed"
     ? "Mix of easy (30%), medium (50%), and hard (20%) questions"
     : `All questions should be ${difficulty} difficulty`;
+
+  const mathFormatting = subject === "Mathematics" || subject === "Physics" || subject === "Chemistry"
+    ? `
+FORMATTING (VERY IMPORTANT):
+- Use Unicode for fractions: ½, ⅓, ¼, ⅔, ¾ or numerator⁄denominator format
+- Use superscripts for powers: ², ³, ⁴, ⁵ (e.g., x² + 2x + 1)
+- Use subscripts for bases/indices: ₁, ₂, ₃ (e.g., log₂ 8, a₁ + a₂)
+- Use √ for square root, ³√ for cube root
+- Use ° for degrees (e.g., sin 30°, cos 60°)
+- Use proper symbols: ×, ÷, ±, ≤, ≥, ≠, ≈, π, θ, ∞
+- Write naturally like a textbook, NOT in LaTeX or code format`
+    : "";
 
   return `Generate exactly ${count} JAMB-style ${subject} questions on the topic: "${topic}".
 
@@ -241,6 +297,7 @@ Requirements:
 - Include a brief explanation for each answer
 - Questions should be challenging but fair for Nigerian secondary school leavers
 - Use proper JAMB formatting and style
+${mathFormatting}
 
 Return a JSON array with this exact format:
 [
@@ -248,12 +305,12 @@ Return a JSON array with this exact format:
     "question": "The complete question text here",
     "options": {
       "A": "First option",
-      "B": "Second option", 
+      "B": "Second option",
       "C": "Third option",
       "D": "Fourth option"
     },
     "correct_answer": "A",
-    "difficulty": "easy|medium|hard",
+    "difficulty": "easy",
     "explanation": "Brief explanation of why the answer is correct"
   }
 ]

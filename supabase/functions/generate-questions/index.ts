@@ -179,6 +179,50 @@ IMPORTANT: Return ONLY a valid JSON array. No markdown, no code blocks, no extra
   }
 });
 
+function sanitizeJsonString(str: string): string {
+  // Remove control characters that break JSON parsing (except \n \r \t which we handle)
+  // Replace literal newlines/tabs inside JSON string values with escaped versions
+  let result = '';
+  let inString = false;
+  let escapeNext = false;
+  
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    const code = str.charCodeAt(i);
+    
+    if (escapeNext) {
+      escapeNext = false;
+      result += char;
+      continue;
+    }
+    
+    if (char === '\\' && inString) {
+      escapeNext = true;
+      result += char;
+      continue;
+    }
+    
+    if (char === '"' && !escapeNext) {
+      inString = !inString;
+      result += char;
+      continue;
+    }
+    
+    if (inString) {
+      // Inside a JSON string, escape control characters
+      if (char === '\n') { result += '\\n'; continue; }
+      if (char === '\r') { result += '\\r'; continue; }
+      if (char === '\t') { result += '\\t'; continue; }
+      // Remove other control characters (0x00-0x1F except the ones above)
+      if (code < 0x20) { result += ' '; continue; }
+    }
+    
+    result += char;
+  }
+  
+  return result;
+}
+
 function parseAIResponse(content: string): any[] {
   // Step 1: Clean up markdown code blocks
   let cleaned = content.trim();
@@ -191,6 +235,9 @@ function parseAIResponse(content: string): any[] {
     cleaned = cleaned.slice(0, -3);
   }
   cleaned = cleaned.trim();
+  
+  // Step 1.5: Sanitize control characters inside JSON strings
+  cleaned = sanitizeJsonString(cleaned);
 
   // Step 2: Try direct parse
   try {
@@ -221,31 +268,31 @@ function parseAIResponse(content: string): any[] {
   // Step 5: Handle truncated JSON - find the last complete object
   console.log("Attempting truncated JSON recovery...");
   
-  // Find all complete objects by matching closing braces followed by comma or array end
+  // Find all complete objects by matching closing braces
   let lastValidEnd = -1;
   let braceDepth = 0;
-  let inString = false;
-  let escapeNext = false;
+  let inStr = false;
+  let escNext = false;
 
   for (let i = 0; i < jsonStr.length; i++) {
     const char = jsonStr[i];
     
-    if (escapeNext) {
-      escapeNext = false;
+    if (escNext) {
+      escNext = false;
       continue;
     }
 
     if (char === '\\') {
-      escapeNext = true;
+      escNext = true;
       continue;
     }
 
     if (char === '"') {
-      inString = !inString;
+      inStr = !inStr;
       continue;
     }
 
-    if (inString) continue;
+    if (inStr) continue;
 
     if (char === '{') braceDepth++;
     if (char === '}') {

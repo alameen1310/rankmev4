@@ -319,7 +319,7 @@ export const UserManagement = () => {
       // Create notifications for all users
       const notifications = allUsers.map(user => ({
         user_id: user.id,
-        type: 'announcement',
+        type: 'system',
         title: `📢 ${broadcastTitle.trim()}`,
         message: broadcastMessage.trim(),
         read: false,

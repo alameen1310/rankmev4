@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Loader2, CheckCircle, XCircle, Database, Sparkles } from 'lucide-react';
+import { ArrowLeft, Play, Loader2, CheckCircle, XCircle, Database, Sparkles, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
@@ -30,6 +31,9 @@ const AdminQuestions = () => {
   const [subjects, setSubjects] = useState<SubjectStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeGeneration, setActiveGeneration] = useState<string | null>(null);
+  const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
+  const [customTopics, setCustomTopics] = useState<Record<string, string[]>>({});
+  const [newTopicInput, setNewTopicInput] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadQuestionCounts();
@@ -91,63 +95,29 @@ const AdminQuestions = () => {
     }
   };
 
-  const handleBulkGenerate = async (subjectName: string) => {
-    if (activeGeneration) {
-      toast.error('Please wait for current generation to complete');
-      return;
-    }
+  const addCustomTopic = (subjectName: string) => {
+    const topic = newTopicInput[subjectName]?.trim();
+    if (!topic) return;
 
-    setActiveGeneration(subjectName);
-    const topics = SUBJECT_TOPICS[subjectName];
-    
-    if (!topics) {
-      toast.error('Unknown subject');
-      return;
-    }
+    setCustomTopics(prev => ({
+      ...prev,
+      [subjectName]: [...(prev[subjectName] || []), topic],
+    }));
+    setNewTopicInput(prev => ({ ...prev, [subjectName]: '' }));
+    toast.success(`Added custom topic: ${topic}`);
+  };
 
-    let totalInserted = 0;
+  const removeCustomTopic = (subjectName: string, topic: string) => {
+    setCustomTopics(prev => ({
+      ...prev,
+      [subjectName]: (prev[subjectName] || []).filter(t => t !== topic),
+    }));
+  };
 
-    for (const topic of topics) {
-      const batches = Math.ceil(topic.targetCount / 15);
-
-      for (let batch = 0; batch < batches; batch++) {
-        const count = Math.min(15, topic.targetCount - batch * 15);
-
-        setSubjects((prev) =>
-          prev.map((s) =>
-            s.name === subjectName
-              ? {
-                  ...s,
-                  isGenerating: true,
-                  progress: {
-                    subject: subjectName,
-                    topic: topic.name,
-                    current: batch + 1,
-                    total: batches,
-                    inserted: totalInserted,
-                    status: 'generating',
-                  },
-                }
-              : s
-          )
-        );
-
-        try {
-          const result = await generateQuestions(subjectName, topic.name, count);
-          if (result.success) {
-            totalInserted += result.inserted;
-          }
-          // Delay between batches
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        } catch (error) {
-          console.error(`Error in batch:`, error);
-        }
-      }
-    }
-
-    toast.success(`Bulk generation complete! Inserted ${totalInserted} questions.`);
-    setActiveGeneration(null);
-    await loadQuestionCounts();
+  const getAllTopicsForSubject = (subjectName: string) => {
+    const defaultTopics = SUBJECT_TOPICS[subjectName]?.map(t => t.name) || [];
+    const custom = customTopics[subjectName] || [];
+    return [...defaultTopics, ...custom];
   };
 
   const totalQuestions = subjects.reduce((sum, s) => sum + s.current, 0);
@@ -206,84 +176,160 @@ const AdminQuestions = () => {
                 </CardDescription>
               </div>
               <Badge variant={totalQuestions >= totalTarget ? 'default' : 'secondary'}>
-                {Math.round((totalQuestions / totalTarget) * 100)}%
+                {totalTarget > 0 ? Math.round((totalQuestions / totalTarget) * 100) : 0}%
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
-            <Progress value={(totalQuestions / totalTarget) * 100} className="h-3" />
+            <Progress value={totalTarget > 0 ? (totalQuestions / totalTarget) * 100 : 0} className="h-3" />
           </CardContent>
         </Card>
 
         {/* Subject Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {subjects.map((subject) => (
-            <Card
-              key={subject.name}
-              className={subject.isGenerating ? 'border-primary/50' : ''}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{subject.name}</CardTitle>
-                  {subject.current >= subject.target ? (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                  ) : subject.isGenerating ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  ) : null}
-                </div>
-                <CardDescription>
-                  {subject.current.toLocaleString()} / {subject.target.toLocaleString()} questions
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Progress
-                  value={Math.min(100, (subject.current / subject.target) * 100)}
-                  className="h-2"
-                />
+          {subjects.map((subject) => {
+            const isExpanded = expandedSubject === subject.name;
+            const allTopics = getAllTopicsForSubject(subject.name);
 
-                {subject.progress && subject.isGenerating && (
-                  <div className="text-sm text-muted-foreground">
-                    <p className="font-medium">{subject.progress.topic}</p>
-                    <p>
-                      Batch {subject.progress.current}/{subject.progress.total}
-                    </p>
+            return (
+              <Card
+                key={subject.name}
+                className={subject.isGenerating ? 'border-primary/50' : ''}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{subject.name}</CardTitle>
+                    {subject.current >= subject.target ? (
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    ) : subject.isGenerating ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    ) : null}
                   </div>
-                )}
+                  <CardDescription>
+                    {subject.current.toLocaleString()} / {subject.target.toLocaleString()} questions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Progress
+                    value={Math.min(100, (subject.current / subject.target) * 100)}
+                    className="h-2"
+                  />
 
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => handleGenerateForSubject(subject.name)}
-                    disabled={!!activeGeneration}
-                    className="flex-1"
-                  >
-                    {subject.isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Sparkles className="h-4 w-4 mr-2" />
-                    )}
-                    +15 Questions
-                  </Button>
-                </div>
+                  {subject.progress && subject.isGenerating && (
+                    <div className="text-sm text-muted-foreground">
+                      <p className="font-medium">{subject.progress.topic}</p>
+                      <p>
+                        Batch {subject.progress.current}/{subject.progress.total}
+                      </p>
+                    </div>
+                  )}
 
-                {/* Topic buttons */}
-                <div className="flex flex-wrap gap-1">
-                  {SUBJECT_TOPICS[subject.name]?.slice(0, 4).map((topic) => (
+                  <div className="flex gap-2">
                     <Button
-                      key={topic.name}
-                      variant="outline"
                       size="sm"
-                      className="text-xs h-7"
-                      onClick={() => handleGenerateForSubject(subject.name, topic.name)}
+                      onClick={() => handleGenerateForSubject(subject.name)}
                       disabled={!!activeGeneration}
+                      className="flex-1"
                     >
-                      {topic.name}
+                      {subject.isGenerating ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Sparkles className="h-4 w-4 mr-2" />
+                      )}
+                      +15 Questions
                     </Button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setExpandedSubject(isExpanded ? null : subject.name)}
+                    >
+                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </div>
+
+                  {/* All topic buttons - shown when expanded */}
+                  {isExpanded && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Topics ({allTopics.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {allTopics.map((topicName) => {
+                          const isCustom = customTopics[subject.name]?.includes(topicName);
+                          return (
+                            <div key={topicName} className="flex items-center gap-0.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs h-7"
+                                onClick={() => handleGenerateForSubject(subject.name, topicName)}
+                                disabled={!!activeGeneration}
+                              >
+                                {topicName}
+                              </Button>
+                              {isCustom && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5"
+                                  onClick={() => removeCustomTopic(subject.name, topicName)}
+                                >
+                                  <X className="h-3 w-3 text-destructive" />
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Add custom topic */}
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Add custom topic..."
+                          value={newTopicInput[subject.name] || ''}
+                          onChange={(e) => setNewTopicInput(prev => ({ ...prev, [subject.name]: e.target.value }))}
+                          onKeyDown={(e) => e.key === 'Enter' && addCustomTopic(subject.name)}
+                          className="h-8 text-sm"
+                        />
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8"
+                          onClick={() => addCustomTopic(subject.name)}
+                          disabled={!newTopicInput[subject.name]?.trim()}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show first 3 topic buttons when collapsed */}
+                  {!isExpanded && (
+                    <div className="flex flex-wrap gap-1">
+                      {allTopics.slice(0, 3).map((topicName) => (
+                        <Button
+                          key={topicName}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7"
+                          onClick={() => handleGenerateForSubject(subject.name, topicName)}
+                          disabled={!!activeGeneration}
+                        >
+                          {topicName}
+                        </Button>
+                      ))}
+                      {allTopics.length > 3 && (
+                        <Badge variant="secondary" className="text-xs h-7 cursor-pointer" onClick={() => setExpandedSubject(subject.name)}>
+                          +{allTopics.length - 3} more
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Quick Generate Section */}
@@ -322,18 +368,11 @@ const AdminQuestions = () => {
             <CardTitle>How It Works</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>
-              1. Click "+15 Questions" to generate 15 JAMB-style questions for a subject
-            </p>
-            <p>
-              2. Use topic buttons to generate questions for specific topics
-            </p>
-            <p>
-              3. Questions are generated using AI and automatically saved to the database
-            </p>
-            <p>
-              4. Keep generating until you reach your target of 1000+ questions per subject
-            </p>
+            <p>1. Click "+15 Questions" to generate 15 JAMB-style questions for a subject</p>
+            <p>2. Expand a subject card to see ALL topics and generate for specific ones</p>
+            <p>3. Add custom topics using the input field when expanded</p>
+            <p>4. Questions are generated using AI with proper math formatting (Unicode fractions, superscripts, etc.)</p>
+            <p>5. Keep generating until you reach your target of 1000+ questions per subject</p>
             <p className="text-yellow-600 dark:text-yellow-400">
               ⚠️ Note: Generation uses AI credits. Generate in batches to manage usage.
             </p>

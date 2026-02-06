@@ -180,42 +180,49 @@ IMPORTANT: Return ONLY a valid JSON array. No markdown, no code blocks, no extra
 });
 
 function sanitizeJsonString(str: string): string {
-  // Remove control characters that break JSON parsing (except \n \r \t which we handle)
-  // Replace literal newlines/tabs inside JSON string values with escaped versions
+  // Fix control characters AND invalid backslash escapes inside JSON strings
+  const validEscapes = new Set(['"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u']);
   let result = '';
   let inString = false;
-  let escapeNext = false;
   
   for (let i = 0; i < str.length; i++) {
     const char = str[i];
     const code = str.charCodeAt(i);
     
-    if (escapeNext) {
-      escapeNext = false;
+    if (!inString) {
+      if (char === '"') {
+        inString = true;
+      }
       result += char;
       continue;
     }
     
-    if (char === '\\' && inString) {
-      escapeNext = true;
+    // We are inside a JSON string
+    if (char === '\\') {
+      const next = str[i + 1];
+      if (next && validEscapes.has(next)) {
+        // Valid JSON escape sequence - keep as-is
+        result += char + next;
+        i++; // skip next char
+      } else {
+        // Invalid escape like \f(rac), \c(os), \s(qrt) — drop the backslash
+        // This converts LaTeX \frac to frac, \cos to cos, etc.
+        continue;
+      }
+      continue;
+    }
+    
+    if (char === '"') {
+      inString = false;
       result += char;
       continue;
     }
     
-    if (char === '"' && !escapeNext) {
-      inString = !inString;
-      result += char;
-      continue;
-    }
-    
-    if (inString) {
-      // Inside a JSON string, escape control characters
-      if (char === '\n') { result += '\\n'; continue; }
-      if (char === '\r') { result += '\\r'; continue; }
-      if (char === '\t') { result += '\\t'; continue; }
-      // Remove other control characters (0x00-0x1F except the ones above)
-      if (code < 0x20) { result += ' '; continue; }
-    }
+    // Escape control characters
+    if (char === '\n') { result += '\\n'; continue; }
+    if (char === '\r') { result += '\\r'; continue; }
+    if (char === '\t') { result += '\\t'; continue; }
+    if (code < 0x20) { result += ' '; continue; }
     
     result += char;
   }

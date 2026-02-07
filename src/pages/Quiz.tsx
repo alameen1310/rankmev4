@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Zap, Target, Flame, Skull } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -126,6 +126,19 @@ export const Quiz = () => {
     setSubjectConfig(null);
   }, []);
 
+  // Compute current running streak for game feel feedback
+  const currentStreak = useMemo(() => {
+    let streak = 0;
+    for (let i = state.currentIndex - 1; i >= 0; i--) {
+      if (state.answers[i] === state.questions[i]?.correctIndex) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }, [state.currentIndex, state.answers, state.questions]);
+
   // Show Quick Play result screen
   if (state.isComplete && selectedMode === 'quick-play') {
     return <QuizResult result={getResult()} onRetry={handleRetry} />;
@@ -168,6 +181,7 @@ export const Quiz = () => {
             questionNumber={state.currentIndex + 1}
             totalQuestions={state.questions.length}
             onAnswer={handleAnswer}
+            currentStreak={currentStreak}
           />
         </div>
       </div>

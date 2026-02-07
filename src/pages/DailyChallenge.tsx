@@ -12,7 +12,7 @@ import {
   type DailyChallengeQuestion,
   type SubmitResponse 
 } from '@/services/dailyChallenge';
-import { Confetti } from '@/components/Confetti';
+import { DailyChallengeResult } from '@/components/daily-challenge/DailyChallengeResult';
 import { toast } from 'sonner';
 
 type ChallengeState = 'loading' | 'ready' | 'playing' | 'completed' | 'already_completed' | 'error';
@@ -39,7 +39,6 @@ export function DailyChallenge() {
   const [result, setResult] = useState<SubmitResponse | null>(null);
   const [existingAttempt, setExistingAttempt] = useState<any>(null);
   const [existingRank, setExistingRank] = useState<number | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -144,11 +143,6 @@ export function DailyChallenge() {
       const result = await submitDailyChallenge(finalAnswers, finalTime);
       setResult(result);
       setState('completed');
-      
-      if (result.percentile >= 50) {
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 5000);
-      }
     } catch (error: any) {
       console.error('Failed to submit:', error);
       toast.error(error.message || 'Failed to submit challenge');
@@ -413,74 +407,7 @@ export function DailyChallenge() {
 
   // Completed state
   if (state === 'completed' && result) {
-    return (
-      <div className="min-h-screen">
-        {showConfetti && <Confetti isActive={showConfetti} />}
-        
-        <div className="glass-strong sticky top-14 z-40 border-b border-border/50">
-          <div className="max-w-lg mx-auto px-4 py-3">
-            <h1 className="font-semibold text-center">Challenge Complete!</h1>
-          </div>
-        </div>
-
-        <div className="max-w-lg mx-auto px-4 py-8">
-          <Card className="p-6 text-center bg-gradient-to-br from-primary/10 to-card mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-warning to-warning/70 flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <Trophy className="w-10 h-10 text-warning-foreground" />
-            </div>
-
-            <h2 className="text-2xl font-bold mb-1">Rank #{result.rank}</h2>
-            <p className="text-lg text-success font-medium mb-6">
-              {result.message}
-            </p>
-
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="glass rounded-lg p-4">
-                <p className="text-2xl font-bold text-primary">{result.attempt.score}</p>
-                <p className="text-xs text-muted-foreground">Score</p>
-              </div>
-              <div className="glass rounded-lg p-4">
-                <p className="text-2xl font-bold text-success">
-                  {result.attempt.correct_answers}/{result.attempt.total_questions}
-                </p>
-                <p className="text-xs text-muted-foreground">Correct</p>
-              </div>
-              <div className="glass rounded-lg p-4">
-                <p className="text-2xl font-bold text-warning">
-                  {formatTime(result.attempt.time_taken_seconds)}
-                </p>
-                <p className="text-xs text-muted-foreground">Time</p>
-              </div>
-            </div>
-
-            <div className="glass rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Accuracy</span>
-                <span className="font-semibold">{Math.round(result.attempt.accuracy)}%</span>
-              </div>
-              <Progress value={result.attempt.accuracy} className="h-2" />
-            </div>
-
-            <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                className="flex-1" 
-                onClick={() => navigate('/dashboard')}
-              >
-                Back Home
-              </Button>
-              <Button 
-                className="flex-1"
-                onClick={() => navigate('/daily-challenge/leaderboard')}
-              >
-                <Trophy className="w-4 h-4 mr-2" />
-                Leaderboard
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </div>
-    );
+    return <DailyChallengeResult result={result} />;
   }
 
   return null;

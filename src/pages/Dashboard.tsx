@@ -23,14 +23,14 @@ export const Dashboard = () => {
 
   return (
     <div className="min-h-screen pb-4 pattern-geometric">
-      {/* Welcome Section */}
+      {/* Welcome Section — animated greeting */}
       <section className="relative overflow-hidden px-4 py-5">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-warning/5" />
         
         <div className="relative max-w-lg mx-auto">
-          <div className="glass rounded-2xl p-4">
+          <div className="glass rounded-2xl p-4 animate-slide-in-bottom game-card" style={{ animationDuration: '350ms' }}>
             <div className="flex items-center gap-4">
-              <Avatar className="h-14 w-14 border-3 border-primary/30 shrink-0">
+              <Avatar className="h-14 w-14 border-3 border-primary/30 shrink-0 animate-scale-in">
                 {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.username || 'User'} />}
                 <AvatarFallback className="bg-primary/10 text-primary text-lg font-bold">
                   {(profile.username || 'U').slice(0, 2).toUpperCase()}
@@ -39,15 +39,15 @@ export const Dashboard = () => {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <h1 className="text-lg font-bold truncate">{profile.username || 'User'}</h1>
+                  <h1 className="text-lg font-bold truncate animate-text-reveal">{profile.username || 'User'}</h1>
                   <TierBadge tier={profile.tier} size="sm" />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Welcome back!
+                <p className="text-sm text-muted-foreground animate-text-reveal" style={{ animationDelay: '100ms' }}>
+                  Welcome back! 🎮
                 </p>
               </div>
 
-              <div className="text-center shrink-0">
+              <div className="text-center shrink-0 animate-bounce-in" style={{ animationDelay: '200ms' }}>
                 <div className="flex items-center justify-center gap-1 text-warning">
                   <Flame className="h-5 w-5 animate-streak-fire" />
                   <span className="text-xl font-bold">{profile.current_streak}</span>
@@ -59,17 +59,17 @@ export const Dashboard = () => {
         </div>
       </section>
 
-      {/* Daily Challenge - MOST PROMINENT */}
+      {/* Daily Challenge — glowing CTA */}
       <section className="px-4 py-3">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto animate-slide-in-bottom" style={{ animationDelay: '80ms' }}>
           <DailyChallengeCard />
         </div>
       </section>
 
-      {/* Stats Grid */}
+      {/* Stats Grid — staggered entry */}
       <section className="px-4 py-2">
         <div className="max-w-lg mx-auto">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 stagger-children">
             <StatCard
               icon={Trophy}
               label="Total Points"
@@ -101,11 +101,11 @@ export const Dashboard = () => {
       {/* Weekly Progress + Streak */}
       <section className="px-4 py-4">
         <div className="max-w-lg mx-auto grid grid-cols-3 gap-3">
-          <div className="glass rounded-2xl p-4 flex flex-col items-center justify-center">
+          <div className="glass rounded-2xl p-4 flex flex-col items-center justify-center game-card">
             <CircularProgress value={weeklyProgress} size="md" color="primary" />
             <span className="text-xs text-muted-foreground mt-2 text-center">Weekly Goal</span>
           </div>
-          <div className="col-span-2">
+          <div className="col-span-2 animate-slide-in-bottom" style={{ animationDelay: '160ms' }}>
             <StreakCounter streak={profile.current_streak} />
           </div>
         </div>
@@ -113,33 +113,33 @@ export const Dashboard = () => {
 
       {/* Tier Progress */}
       <section className="px-4 py-2">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto animate-fade-in" style={{ animationDelay: '200ms' }}>
           <TierProgress points={profile.total_points} compact />
         </div>
       </section>
 
-      {/* Quick Actions */}
+      {/* Quick Actions — glowing Play button */}
       <section className="px-4 py-3">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto animate-slide-in-bottom" style={{ animationDelay: '240ms' }}>
           <div className="flex gap-3">
             <Link to="/quiz" className="flex-1">
-              <Button variant="default" size="lg" className="w-full h-12 shadow-md">
+              <Button variant="default" size="lg" className="w-full h-12 shadow-md glow-cta game-tap">
                 <Zap className="h-5 w-5 mr-2" />
                 Start Quiz
               </Button>
             </Link>
-            <Button variant="outline" size="lg" className="h-12 px-4">
+            <Button variant="outline" size="lg" className="h-12 px-4 game-tap">
               <Share2 className="h-5 w-5" />
             </Button>
             <Link to="/leaderboard">
-              <Button variant="outline" size="lg" className="h-12 px-4">
+              <Button variant="outline" size="lg" className="h-12 px-4 game-tap">
                 <Trophy className="h-5 w-5" />
               </Button>
             </Link>
           </div>
           
           <Link to="/quiz/mathematics" className="block mt-3">
-            <div className="glass rounded-xl p-3 flex items-center gap-3 hover:bg-accent/50 transition-colors">
+            <div className="glass rounded-xl p-3 flex items-center gap-3 game-card">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                 <span className="text-lg">🧮</span>
               </div>
@@ -153,23 +153,23 @@ export const Dashboard = () => {
         </div>
       </section>
 
-      {/* Daily Rewards & Mystery Box */}
+      {/* Daily Rewards */}
       <section className="px-4 py-3">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto animate-fade-in" style={{ animationDelay: '300ms' }}>
           <DailyRewards />
         </div>
       </section>
 
-      {/* Friend Suggestions - Social Discovery */}
+      {/* Friend Suggestions */}
       <section className="px-4 py-3">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto animate-fade-in" style={{ animationDelay: '360ms' }}>
           <FriendSuggestions compact />
         </div>
       </section>
 
       {/* Badge Collection Preview */}
       <section className="px-4 py-3">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto animate-fade-in" style={{ animationDelay: '420ms' }}>
           <BadgeCollection compact />
         </div>
       </section>
@@ -178,7 +178,7 @@ export const Dashboard = () => {
       <section className="px-4 py-3 pb-8">
         <div className="max-w-lg mx-auto">
           <Link to="/gamification">
-            <div className="glass rounded-xl p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors">
+            <div className="glass rounded-xl p-4 flex items-center gap-3 game-card">
               <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
                 <Gift className="h-5 w-5 text-warning" />
               </div>

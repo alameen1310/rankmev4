@@ -22,7 +22,6 @@ export function DailyChallengeCard() {
     }
   }, [isAuthenticated]);
 
-  // Calculate time until midnight UTC reset
   useEffect(() => {
     const updateCountdown = () => {
       const now = new Date();
@@ -37,7 +36,7 @@ export function DailyChallengeCard() {
     };
 
     updateCountdown();
-    const interval = setInterval(updateCountdown, 60000); // Update every minute
+    const interval = setInterval(updateCountdown, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -54,7 +53,7 @@ export function DailyChallengeCard() {
 
   if (!isAuthenticated) {
     return (
-      <Card className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-card to-warning/5 border-primary/30">
+      <Card className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-card to-warning/5 border-primary/30 game-card">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-warning/5" />
         <div className="relative p-5">
           <div className="flex items-center gap-3 mb-3">
@@ -67,7 +66,7 @@ export function DailyChallengeCard() {
             </div>
           </div>
           <Link to="/login">
-            <Button className="w-full mt-2">
+            <Button className="w-full mt-2 game-tap">
               Sign In to Play
             </Button>
           </Link>
@@ -96,15 +95,15 @@ export function DailyChallengeCard() {
 
   return (
     <Card className={cn(
-      "relative overflow-hidden border-2 transition-all",
+      "relative overflow-hidden border-2 transition-all game-card",
       isCompleted 
         ? "bg-gradient-to-br from-success/10 via-card to-success/5 border-success/30"
-        : "bg-gradient-to-br from-primary/10 via-card to-warning/5 border-primary/30 hover:border-primary/50 hover:shadow-lg"
+        : "bg-gradient-to-br from-primary/10 via-card to-warning/5 border-primary/30 glow-cta"
     )}>
       {/* Decorative background */}
       <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-warning rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-warning rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
       </div>
 
       <div className="relative p-5">
@@ -112,10 +111,10 @@ export function DailyChallengeCard() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className={cn(
-              "w-12 h-12 rounded-xl flex items-center justify-center shadow-lg",
+              "w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-transform duration-200 hover:scale-110",
               isCompleted 
                 ? "bg-gradient-to-br from-success to-success/70"
-                : "bg-gradient-to-br from-primary to-primary/70"
+                : "bg-gradient-to-br from-primary to-primary/70 animate-pulse-slow"
             )}>
               {isCompleted ? (
                 <CheckCircle className="w-6 h-6 text-success-foreground" />
@@ -131,7 +130,7 @@ export function DailyChallengeCard() {
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
-                {isCompleted ? 'Challenge completed!' : 'Compete for the top spot!'}
+                {isCompleted ? '✅ Challenge completed!' : '⚔️ Compete for the top spot!'}
               </p>
             </div>
           </div>
@@ -140,22 +139,22 @@ export function DailyChallengeCard() {
         {isCompleted && attempt ? (
           <>
             {/* Completed Stats */}
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="glass rounded-lg p-3 text-center">
+            <div className="grid grid-cols-3 gap-3 mb-4 stagger-children">
+              <div className="glass rounded-lg p-3 text-center game-tap">
                 <div className="flex items-center justify-center gap-1 text-warning mb-1">
                   <Trophy className="w-4 h-4" />
                 </div>
                 <p className="text-lg font-bold">#{challengeData?.rank || '-'}</p>
                 <p className="text-xs text-muted-foreground">Rank</p>
               </div>
-              <div className="glass rounded-lg p-3 text-center">
+              <div className="glass rounded-lg p-3 text-center game-tap">
                 <div className="flex items-center justify-center gap-1 text-primary mb-1">
                   <Zap className="w-4 h-4" />
                 </div>
                 <p className="text-lg font-bold">{attempt.score}</p>
                 <p className="text-xs text-muted-foreground">Score</p>
               </div>
-              <div className="glass rounded-lg p-3 text-center">
+              <div className="glass rounded-lg p-3 text-center game-tap">
                 <div className="flex items-center justify-center gap-1 text-success mb-1">
                   <Target className="w-4 h-4" />
                 </div>
@@ -167,7 +166,7 @@ export function DailyChallengeCard() {
             {/* Actions */}
             <div className="flex gap-2">
               <Link to="/daily-challenge/leaderboard" className="flex-1">
-                <Button variant="default" className="w-full">
+                <Button variant="default" className="w-full game-tap">
                   <Trophy className="w-4 h-4 mr-2" />
                   View Leaderboard
                 </Button>
@@ -176,7 +175,7 @@ export function DailyChallengeCard() {
 
             {/* Next Challenge Timer */}
             <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Clock className="w-4 h-4" />
+              <Clock className="w-4 h-4 animate-pulse-slow" />
               <span>Next challenge in {timeUntilReset}</span>
             </div>
           </>
@@ -185,7 +184,7 @@ export function DailyChallengeCard() {
             {/* Challenge Info */}
             <div className="flex items-center gap-4 mb-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
-                <Flame className="w-4 h-4 text-warning" />
+                <Flame className="w-4 h-4 text-warning animate-streak-fire" />
                 <span>{challengeData?.challenge?.totalQuestions || 10} questions</span>
               </div>
               <div className="flex items-center gap-1">
@@ -194,9 +193,9 @@ export function DailyChallengeCard() {
               </div>
             </div>
 
-            {/* Start Button */}
+            {/* Start Button — glowing CTA */}
             <Link to="/daily-challenge">
-              <Button size="lg" className="w-full h-12 text-base font-semibold shadow-md">
+              <Button size="lg" className="w-full h-12 text-base font-semibold shadow-md glow-cta game-tap">
                 <Zap className="w-5 h-5 mr-2" />
                 Start Challenge
                 <ChevronRight className="w-5 h-5 ml-auto" />
@@ -205,7 +204,7 @@ export function DailyChallengeCard() {
 
             {/* Reset Timer */}
             <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Clock className="w-4 h-4" />
+              <Clock className="w-4 h-4 animate-pulse-slow" />
               <span>Resets in {timeUntilReset}</span>
             </div>
           </>

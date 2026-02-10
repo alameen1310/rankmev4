@@ -437,6 +437,109 @@ export default {
 					transform: 'translateY(0)',
 					opacity: '1'
 				}
+			},
+			'stagger-in': {
+				'0%': {
+					opacity: '0',
+					transform: 'translateY(12px) scale(0.96)'
+				},
+				'100%': {
+					opacity: '1',
+					transform: 'translateY(0) scale(1)'
+				}
+			},
+			'slide-in-bottom': {
+				'0%': {
+					opacity: '0',
+					transform: 'translateY(20px)'
+				},
+				'100%': {
+					opacity: '1',
+					transform: 'translateY(0)'
+				}
+			},
+			'glow-pulse': {
+				'0%, 100%': {
+					boxShadow: '0 0 8px hsl(var(--primary) / 0.3)'
+				},
+				'50%': {
+					boxShadow: '0 0 20px hsl(var(--primary) / 0.5)'
+				}
+			},
+			'rank-up-glow': {
+				'0%': {
+					transform: 'scale(0.8)',
+					opacity: '0',
+					filter: 'brightness(1)'
+				},
+				'50%': {
+					transform: 'scale(1.05)',
+					filter: 'brightness(1.3)'
+				},
+				'100%': {
+					transform: 'scale(1)',
+					opacity: '1',
+					filter: 'brightness(1)'
+				}
+			},
+			'badge-shine': {
+				'0%': {
+					backgroundPosition: '-200% center'
+				},
+				'100%': {
+					backgroundPosition: '200% center'
+				}
+			},
+			'card-lift': {
+				'0%': {
+					transform: 'translateY(0)',
+					boxShadow: 'var(--shadow-sm)'
+				},
+				'100%': {
+					transform: 'translateY(-2px)',
+					boxShadow: 'var(--shadow-lg)'
+				}
+			},
+			'tap-compress': {
+				'0%': {
+					transform: 'scale(1)'
+				},
+				'50%': {
+					transform: 'scale(0.97)'
+				},
+				'100%': {
+					transform: 'scale(1)'
+				}
+			},
+			'xp-fill': {
+				'0%': {
+					width: '0%'
+				},
+				'100%': {
+					width: 'var(--fill-to)'
+				}
+			},
+			'text-reveal': {
+				'0%': {
+					opacity: '0',
+					transform: 'translateY(4px)',
+					filter: 'blur(4px)'
+				},
+				'100%': {
+					opacity: '1',
+					transform: 'translateY(0)',
+					filter: 'blur(0)'
+				}
+			},
+			'rank-slide': {
+				'0%': {
+					opacity: '0',
+					transform: 'translateX(-12px)'
+				},
+				'100%': {
+					opacity: '1',
+					transform: 'translateX(0)'
+				}
 			}
 		},
 		animation: {
@@ -461,7 +564,17 @@ export default {
 			'correct-glow': 'correct-glow 0.5s ease-out',
 			'wrong-pulse': 'wrong-pulse 0.3s ease-in-out',
 			'phase-in': 'phase-in 0.4s ease-out forwards',
-			'number-count': 'number-count 0.3s ease-out'
+			'number-count': 'number-count 0.3s ease-out',
+			'stagger-in': 'stagger-in 0.35s ease-out both',
+			'slide-in-bottom': 'slide-in-bottom 0.4s ease-out both',
+			'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
+			'rank-up-glow': 'rank-up-glow 0.5s ease-out',
+			'badge-shine': 'badge-shine 3s linear infinite',
+			'card-lift': 'card-lift 0.2s ease-out forwards',
+			'tap-compress': 'tap-compress 0.15s ease-out',
+			'xp-fill': 'xp-fill 1s ease-out forwards',
+			'text-reveal': 'text-reveal 0.4s ease-out both',
+			'rank-slide': 'rank-slide 0.3s ease-out both'
 		},
   		transitionDuration: {
   			default: '300ms',

@@ -25,21 +25,23 @@ export const SubjectCard = ({
       onClick={onClick}
       className={cn(
         "group relative overflow-hidden rounded-2xl p-4 text-left transition-all duration-300",
-        "glass hover:shadow-md active:scale-[0.98]",
+        "glass game-card game-tap",
         "min-h-[140px] w-full touch-target",
         className
       )}
     >
       {/* Background color accent */}
       <div className={cn(
-        "absolute inset-0 opacity-5 transition-opacity group-hover:opacity-10",
+        "absolute inset-0 opacity-5 transition-opacity group-hover:opacity-15",
         subject.color
       )} />
+      
+      {/* Subtle animated gradient overlay */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-primary/5 to-transparent" />
       
       <div className="relative z-10 h-full flex flex-col">
         {/* Icon with progress ring */}
         <div className="relative w-12 h-12 mb-3">
-          {/* Progress ring */}
           {userProgress > 0 && (
             <svg
               className="absolute inset-0 -rotate-90"
@@ -64,7 +66,7 @@ export const SubjectCard = ({
                 strokeWidth="3"
                 fill="none"
                 strokeLinecap="round"
-                className="text-success transition-all duration-500"
+                className="text-success transition-all duration-700 ease-out"
                 style={{
                   strokeDasharray: circumference,
                   strokeDashoffset,
@@ -73,9 +75,8 @@ export const SubjectCard = ({
             </svg>
           )}
           
-          {/* Icon */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-2xl">{subject.icon}</span>
+            <span className="text-2xl group-hover:scale-110 transition-transform duration-200">{subject.icon}</span>
           </div>
         </div>
 
@@ -97,7 +98,7 @@ export const SubjectCard = ({
 
         {/* Difficulty indicator dot */}
         <div className={cn(
-          "absolute top-3 right-3 w-2 h-2 rounded-full",
+          "absolute top-3 right-3 w-2 h-2 rounded-full transition-all group-hover:scale-150",
           subject.color
         )} />
       </div>

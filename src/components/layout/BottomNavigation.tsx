@@ -29,7 +29,7 @@ export const BottomNavigation = () => {
                 to={to}
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 px-4 py-2 rounded-xl transition-all duration-200",
-                  "min-w-[64px] min-h-[48px] touch-target",
+                  "min-w-[64px] min-h-[48px] touch-target game-tap",
                   isActive 
                     ? "text-primary" 
                     : "text-muted-foreground active:text-foreground"
@@ -38,16 +38,19 @@ export const BottomNavigation = () => {
                 <div className="relative">
                   <Icon 
                     className={cn(
-                      "h-6 w-6 transition-transform duration-200",
-                      isActive && "scale-110"
+                      "h-6 w-6 transition-all duration-200",
+                      isActive && "scale-110 drop-shadow-[0_0_6px_hsl(var(--primary)/0.4)]"
                     )} 
                   />
                   {isActive && (
-                    <div className="absolute -inset-2 bg-primary/15 rounded-full blur-lg -z-10" />
+                    <>
+                      <div className="absolute -inset-2 bg-primary/15 rounded-full blur-lg -z-10 animate-pulse-slow" />
+                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+                    </>
                   )}
                 </div>
                 <span className={cn(
-                  "text-[10px] font-medium",
+                  "text-[10px] font-medium transition-all duration-200",
                   isActive && "font-semibold"
                 )}>
                   {label}

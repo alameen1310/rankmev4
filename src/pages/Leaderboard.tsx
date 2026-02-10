@@ -121,7 +121,7 @@ export const Leaderboard = () => {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pattern-trophy">
       {/* Sticky Header */}
       <div className="glass-strong sticky top-14 z-40 border-b border-border/50">
         <div className="max-w-lg mx-auto px-4 py-3 space-y-3">
@@ -181,8 +181,8 @@ export const Leaderboard = () => {
         {activeTab === 'global' && !searchQuery && selectedTiers.length === 0 && filteredData.length >= 3 && (
           <div className="flex items-end justify-center gap-2 mb-6 pt-4">
             {/* 2nd Place */}
-            <div className="flex flex-col items-center animate-fade-in" style={{ animationDelay: '100ms' }}>
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center mb-2 shadow-lg">
+            <div className="flex flex-col items-center animate-slide-in-bottom" style={{ animationDelay: '150ms' }}>
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center mb-2 shadow-lg game-tap">
                 <span className="text-xl">🥈</span>
               </div>
               <span className="font-semibold text-xs truncate max-w-[70px] text-center">
@@ -195,12 +195,12 @@ export const Leaderboard = () => {
             </div>
 
             {/* 1st Place */}
-            <div className="flex flex-col items-center animate-fade-in">
+            <div className="flex flex-col items-center animate-slide-in-bottom" style={{ animationDelay: '0ms' }}>
               <div className="relative">
-                <div className="w-18 h-18 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center mb-2 shadow-gold-glow p-4">
+                <div className="w-18 h-18 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center mb-2 shadow-gold-glow p-4 animate-glow game-tap">
                   <span className="text-2xl">🥇</span>
                 </div>
-                <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-xl">👑</span>
+                <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-xl animate-bounce-subtle">👑</span>
               </div>
               <span className="font-bold text-sm truncate max-w-[80px] text-center">
                 {filteredData[0]?.username.split(' ')[0]}
@@ -212,8 +212,8 @@ export const Leaderboard = () => {
             </div>
 
             {/* 3rd Place */}
-            <div className="flex flex-col items-center animate-fade-in" style={{ animationDelay: '200ms' }}>
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center mb-2 shadow-lg">
+            <div className="flex flex-col items-center animate-slide-in-bottom" style={{ animationDelay: '250ms' }}>
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center mb-2 shadow-lg game-tap">
                 <span className="text-xl">🥉</span>
               </div>
               <span className="font-semibold text-xs truncate max-w-[70px] text-center">
@@ -256,20 +256,15 @@ export const Leaderboard = () => {
         {isLoading ? (
           <LeaderboardSkeleton />
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 stagger-children">
             {filteredData
               .slice(activeTab === 'global' && !searchQuery && selectedTiers.length === 0 ? 3 : 0, visibleCount)
-              .map((entry, index) => (
-                <div
+              .map((entry) => (
+                <LeaderboardRow
                   key={entry.id}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${(index % 10) * 30}ms` }}
-                >
-                  <LeaderboardRow
-                    entry={entry}
-                    isCurrentUser={entry.id === user?.id}
-                  />
-                </div>
+                  entry={entry}
+                  isCurrentUser={entry.id === user?.id}
+                />
               ))}
           </div>
         )}

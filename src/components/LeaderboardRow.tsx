@@ -18,14 +18,13 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className, showBadges = t
   const navigate = useNavigate();
   
   const handleClick = () => {
-    // Don't navigate for demo/fallback entries (numeric IDs are mock data)
     if (entry.id && isNaN(Number(entry.id))) {
       navigate(`/user/${entry.id}`);
     }
   };
 
   const getRankDisplay = (rank: number) => {
-    if (rank === 1) return <span className="text-xl">🥇</span>;
+    if (rank === 1) return <span className="text-xl animate-bounce-subtle">🥇</span>;
     if (rank === 2) return <span className="text-xl">🥈</span>;
     if (rank === 3) return <span className="text-xl">🥉</span>;
     return <span className="text-sm font-bold text-muted-foreground">#{rank}</span>;
@@ -34,7 +33,7 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className, showBadges = t
   const getChangeIcon = () => {
     if (entry.change === 'up') {
       return (
-        <div className="flex items-center gap-0.5 text-success text-xs font-medium">
+        <div className="flex items-center gap-0.5 text-success text-xs font-medium animate-rank-slide">
           <TrendingUp className="h-3 w-3" />
           <span>{entry.changeAmount}</span>
         </div>
@@ -42,7 +41,7 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className, showBadges = t
     }
     if (entry.change === 'down') {
       return (
-        <div className="flex items-center gap-0.5 text-destructive text-xs font-medium">
+        <div className="flex items-center gap-0.5 text-destructive text-xs font-medium animate-shake" style={{ animationDuration: '300ms' }}>
           <TrendingDown className="h-3 w-3" />
           <span>{entry.changeAmount}</span>
         </div>
@@ -51,14 +50,12 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className, showBadges = t
     return <Minus className="h-3 w-3 text-muted-foreground" />;
   };
 
-  // Get title display
   const getEquippedTitle = () => {
     if (!entry.equippedTitle) return null;
     const title = TITLES.find(t => t.name === entry.equippedTitle || t.id === entry.equippedTitle);
     return title;
   };
 
-  // Get showcase badges
   const getShowcaseBadges = () => {
     if (!entry.showcaseBadges || entry.showcaseBadges.length === 0) return [];
     return entry.showcaseBadges
@@ -77,10 +74,10 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className, showBadges = t
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
       className={cn(
-        "flex items-center gap-3 p-3 rounded-xl transition-all duration-200 touch-target",
+        "flex items-center gap-3 p-3 rounded-xl transition-all duration-200 touch-target game-tap",
         isCurrentUser 
-          ? "bg-primary/10 dark:bg-primary/15 border-2 border-primary/30" 
-          : "glass hover:bg-accent/50 active:scale-[0.99]",
+          ? "bg-primary/10 dark:bg-primary/15 border-2 border-primary/30 shadow-glow" 
+          : "glass game-card",
         entry.rank <= 3 && !isCurrentUser && "bg-gradient-to-r from-warning/5 to-transparent",
         isClickable && "cursor-pointer",
         className
@@ -92,14 +89,17 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className, showBadges = t
       </div>
 
       {/* Avatar */}
-      <Avatar className="h-10 w-10 shrink-0 border-2 border-border">
+      <Avatar className={cn(
+        "h-10 w-10 shrink-0 border-2 border-border transition-all duration-200",
+        entry.rank <= 3 && "ring-2 ring-warning/30"
+      )}>
         {entry.avatar && <AvatarImage src={entry.avatar} alt={entry.username} />}
         <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
           {entry.username.slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
 
-      {/* User Info - With proper truncation */}
+      {/* User Info */}
       <div className="flex-1 min-w-0 overflow-hidden">
         <div className="flex items-center gap-2">
           <span className={cn(
@@ -109,11 +109,10 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className, showBadges = t
             {entry.username}
           </span>
           {isCurrentUser && (
-            <span className="shrink-0 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-semibold">
+            <span className="shrink-0 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-semibold animate-pulse-slow">
               YOU
             </span>
           )}
-          {/* Equipped Title */}
           {equippedTitle && (
             <span className="shrink-0 text-[10px] bg-accent text-accent-foreground px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5">
               <span>{equippedTitle.icon}</span>
@@ -124,7 +123,6 @@ export const LeaderboardRow = ({ entry, isCurrentUser, className, showBadges = t
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <span className="shrink-0">{entry.countryFlag}</span>
           <TierBadge tier={entry.tier} size="sm" showLabel={false} />
-          {/* Showcase Badges - inline mini display */}
           {showBadges && showcaseBadges.length > 0 && (
             <div className="flex items-center gap-0.5 ml-1">
               {showcaseBadges.map((badge, idx) => (

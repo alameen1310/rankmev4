@@ -53,13 +53,16 @@ export const TierBadge = ({ tier, size = 'md', showLabel = true, className }: Ti
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full font-semibold',
+        'inline-flex items-center rounded-full font-semibold transition-transform duration-200 hover:scale-105',
         config.colors,
         sizeClasses[size],
         className
       )}
     >
-      <span className={size === 'lg' ? 'text-lg' : 'text-sm'}>{config.icon}</span>
+      <span className={cn(
+        size === 'lg' ? 'text-lg' : 'text-sm',
+        tier === 'champion' && 'animate-bounce-subtle'
+      )}>{config.icon}</span>
       {showLabel && <span>{config.label}</span>}
     </span>
   );

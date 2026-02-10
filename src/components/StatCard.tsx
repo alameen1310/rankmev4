@@ -39,7 +39,7 @@ export const StatCard = ({
   return (
     <div className={cn(
       "glass rounded-xl p-6 min-h-[140px] flex flex-col justify-between relative overflow-hidden",
-      "shadow-md hover:shadow-lg transition-shadow duration-200",
+      "shadow-md game-card game-tap",
       className
     )}>
       {/* Background icon */}
@@ -60,7 +60,6 @@ export const StatCard = ({
   );
 };
 
-// Skeleton version for loading states
 export const StatCardSkeleton = () => (
   <div className="glass rounded-xl p-6 min-h-[140px] flex flex-col justify-between relative overflow-hidden shadow-md animate-pulse">
     <div className="absolute top-4 right-4 w-12 h-12 rounded-full bg-muted/50" />

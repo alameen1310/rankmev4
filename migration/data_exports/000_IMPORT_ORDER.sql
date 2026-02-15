@@ -1,0 +1,81 @@
+-- ============================================================
+-- RankMe Data Import - Master Script
+-- ============================================================
+-- Run these files IN ORDER in your new Supabase SQL Editor.
+-- 
+-- BEFORE IMPORTING:
+-- 1. Run migration/001_complete_schema.sql FIRST to create all tables
+-- 2. Temporarily disable triggers that auto-create profiles:
+--    (The schema migration creates the trigger on auth.users)
+--
+-- IMPORTANT: For tables with RLS, you must run these as the
+-- service role (using SQL Editor in dashboard, which bypasses RLS)
+--
+-- ============================================================
+-- IMPORT ORDER (respects foreign key dependencies)
+-- ============================================================
+--
+-- 001_subjects.sql          (8 rows)   - No dependencies
+-- 002_badges.sql            (15 rows)  - No dependencies  
+-- 003_profiles.sql          (30 rows)  - No FK deps (maps to auth.users)
+-- 004_questions.sql         (20 rows)  - Depends on: subjects
+-- 005_daily_challenges.sql  (13 rows)  - References question IDs
+-- 006_daily_challenge_attempts.sql (7 rows) - Depends on: profiles, daily_challenges
+-- 007_daily_leaderboards.sql (7 rows)  - Depends on: profiles, daily_challenges
+-- 008_friendships.sql       (22 rows)  - Depends on: profiles
+-- 009_daily_streaks.sql     (22 rows)  - Depends on: profiles
+-- 010_user_roles.sql        (1 row)    - Depends on: profiles
+-- 011_message_reactions.sql (6 rows)   - Depends on: profiles, direct_messages
+--
+-- ============================================================
+-- LARGE TABLES (exported but too large for individual SQL files)
+-- ============================================================
+-- These tables have too many rows to include as SQL INSERT files
+-- in this project. You have two options:
+--
+-- Option A: Ask the Lovable AI to output them as SQL in chat
+-- Option B: Start fresh (leaderboard rebuilds automatically via triggers)
+--
+-- quiz_sessions:        490 rows  - Depends on: profiles, subjects
+-- user_answers:       2,428 rows  - Depends on: quiz_sessions, questions
+-- leaderboard_entries: 3,092 rows - Depends on: profiles
+-- direct_messages:      141 rows  - Depends on: profiles
+-- notifications:        128 rows  - Depends on: profiles
+-- friend_requests:       20 rows  - Depends on: profiles
+-- battles:               17 rows  - Depends on: profiles, subjects
+-- battle_participants:   30 rows  - Depends on: profiles, battles
+-- user_badges:           80 rows  - Depends on: profiles, badges
+-- admin_actions:         19 rows  - Depends on: profiles
+--
+-- EMPTY TABLES (no data to import):
+-- payments, subscriptions, quiz_results, user_progress,
+-- user_achievements, ai_summary_jobs, battle_answers,
+-- battle_questions, battle_live_state
+--
+-- ============================================================
+-- AFTER IMPORTING:
+-- 1. Reset all sequences:
+--    SELECT setval('subjects_id_seq', (SELECT MAX(id) FROM subjects));
+--    SELECT setval('badges_id_seq', (SELECT MAX(id) FROM badges));
+--    SELECT setval('questions_id_seq', (SELECT MAX(id) FROM questions));
+--    SELECT setval('leaderboard_entries_id_seq', (SELECT COALESCE(MAX(id),0) FROM leaderboard_entries));
+--    SELECT setval('user_answers_id_seq', (SELECT COALESCE(MAX(id),0) FROM user_answers));
+--
+-- 2. Recalculate leaderboard ranks:
+--    SELECT recalculate_leaderboard_ranks();
+--
+-- 3. Re-enable any disabled triggers
+-- ============================================================
+
+-- Row count verification query (run after import):
+-- SELECT 'subjects' as tbl, count(*) FROM subjects
+-- UNION ALL SELECT 'badges', count(*) FROM badges
+-- UNION ALL SELECT 'profiles', count(*) FROM profiles
+-- UNION ALL SELECT 'questions', count(*) FROM questions
+-- UNION ALL SELECT 'daily_challenges', count(*) FROM daily_challenges
+-- UNION ALL SELECT 'daily_challenge_attempts', count(*) FROM daily_challenge_attempts
+-- UNION ALL SELECT 'daily_leaderboards', count(*) FROM daily_leaderboards
+-- UNION ALL SELECT 'friendships', count(*) FROM friendships
+-- UNION ALL SELECT 'daily_streaks', count(*) FROM daily_streaks
+-- UNION ALL SELECT 'user_roles', count(*) FROM user_roles
+-- UNION ALL SELECT 'message_reactions', count(*) FROM message_reactions;

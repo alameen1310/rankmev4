@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, Mail, Lock, User, Eye, EyeOff, Banknote, CreditCard, Building2 } from 'lucide-react';
+import { Trophy, Mail, Lock, User, Eye, EyeOff, Banknote, CreditCard, Building2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +18,7 @@ export const Signup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   
   // Bank details for cash prizes
   const [bankName, setBankName] = useState('');
@@ -65,30 +66,67 @@ export const Signup = () => {
       return;
     }
 
-    // If bank details provided, update profile after signup
-    if (bankName && accountNumber) {
-      // Small delay to ensure profile is created
-      setTimeout(async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase
-            .from('profiles')
-            .update({
-              bank_name: bankName,
-              account_number: accountNumber,
-              account_name: accountName || username,
-            })
-            .eq('id', user.id);
-        }
-      }, 1000);
-    }
+    // Check if a session was created (auto-confirm enabled) or if email confirmation is needed
+    const { data: { session } } = await supabase.auth.getSession();
     
-    toast({
-      title: 'Account created!',
-      description: 'Welcome to RankMe. Let\'s start learning!',
-    });
-    navigate('/dashboard');
+    if (session) {
+      // Auto-confirm is enabled, user is logged in
+      // If bank details provided, update profile
+      if (bankName && accountNumber) {
+        await supabase
+          .from('profiles')
+          .update({
+            bank_name: bankName,
+            account_number: accountNumber,
+            account_name: accountName || username,
+          })
+          .eq('id', session.user.id);
+      }
+      
+      toast({
+        title: 'Account created!',
+        description: 'Welcome to RankMe. Let\'s start playing!',
+      });
+      navigate('/dashboard');
+    } else {
+      // Email confirmation required
+      setEmailSent(true);
+    }
   };
+
+  // Show confirmation message after signup
+  if (emailSent) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-sm text-center space-y-6">
+          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto animate-scale-in">
+            <CheckCircle2 className="w-10 h-10 text-primary" />
+          </div>
+          <div className="space-y-2 animate-fade-in">
+            <h1 className="text-2xl font-bold">Check your email!</h1>
+            <p className="text-muted-foreground">
+              We've sent a confirmation link to <span className="font-semibold text-foreground">{email}</span>. 
+              Click the link to activate your account.
+            </p>
+          </div>
+          <div className="space-y-3 animate-fade-in" style={{ animationDelay: '200ms' }}>
+            <Button variant="hero" className="w-full" onClick={() => navigate('/login')}>
+              Go to Login
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Didn't receive the email? Check your spam folder or{' '}
+              <button 
+                onClick={() => setEmailSent(false)} 
+                className="text-primary hover:underline font-semibold"
+              >
+                try again
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">

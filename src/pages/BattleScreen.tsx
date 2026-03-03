@@ -8,7 +8,6 @@ import {
   submitBattleAnswer,
   completeBattle,
   type Battle,
-  type BattleParticipant
 } from '@/services/battles';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -16,9 +15,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Swords, Crown, Copy, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Swords, Copy, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Confetti } from '@/components/Confetti';
+import { BattleVSScreen } from '@/components/pvp/BattleVSScreen';
+import { BattleResultScreen } from '@/components/pvp/BattleResultScreen';
+import { BattleScoreTicker } from '@/components/pvp/BattleScoreTicker';
 
 interface BattleQuestion {
   id: number;
@@ -44,8 +45,8 @@ export function BattleScreen() {
   const [showResult, setShowResult] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [battleComplete, setBattleComplete] = useState(false);
+  const [showVSScreen, setShowVSScreen] = useState(false);
 
   // Load battle data
   useEffect(() => {
@@ -56,12 +57,14 @@ export function BattleScreen() {
         const battleData = await getBattle(battleId);
         setBattle(battleData);
         
-        // Check if current user is ready
         const participant = battleData?.participants.find(p => p.user_id === user?.id);
         setIsReady(participant?.ready || false);
         
-        // Load questions if battle is active
         if (battleData?.status === 'active') {
+          // Show VS screen when battle becomes active
+          if (!showVSScreen && !battleComplete) {
+            setShowVSScreen(true);
+          }
           await loadQuestions();
         }
       } catch (error) {
@@ -74,19 +77,16 @@ export function BattleScreen() {
     
     loadBattle();
     
-    // Subscribe to real-time updates
     const channel = subscribeToBattle(
       battleId,
       async (updatedBattle) => {
         setBattle(updatedBattle);
         if (updatedBattle.status === 'active' && questions.length === 0) {
+          setShowVSScreen(true);
           await loadQuestions();
         }
         if (updatedBattle.status === 'completed') {
           setBattleComplete(true);
-          if (updatedBattle.winner_id === user?.id) {
-            setShowConfetti(true);
-          }
         }
       },
       async () => {
@@ -105,40 +105,24 @@ export function BattleScreen() {
   const loadQuestions = async () => {
     if (!battleId) return;
     
-    console.log('[BattleScreen] Loading questions for battle:', battleId);
-    
     const { data, error } = await supabase
       .from('battle_questions')
       .select(`
         question_id,
         order_index,
         questions (
-          id,
-          question_text,
-          option_a,
-          option_b,
-          option_c,
-          option_d,
-          correct_answer,
-          difficulty
+          id, question_text, option_a, option_b, option_c, option_d, correct_answer, difficulty
         )
       `)
       .eq('battle_id', battleId)
       .order('order_index');
     
-    if (error) {
-      console.error('[BattleScreen] Error loading questions:', error);
-    }
-    
     if (data && data.length > 0) {
       const formattedQuestions = data
         .map(bq => bq.questions as unknown as BattleQuestion)
         .filter(Boolean);
-      console.log('[BattleScreen] Loaded', formattedQuestions.length, 'questions');
       setQuestions(formattedQuestions);
     } else {
-      console.log('[BattleScreen] No battle_questions found, using fallback');
-      // Use fallback questions
       setQuestions([
         { id: 1, question_text: 'What is 2 + 2?', option_a: '3', option_b: '4', option_c: '5', option_d: '6', correct_answer: 'B', difficulty: 'easy' },
         { id: 2, question_text: 'What is the capital of France?', option_a: 'London', option_b: 'Berlin', option_c: 'Paris', option_d: 'Madrid', correct_answer: 'C', difficulty: 'easy' },
@@ -149,9 +133,9 @@ export function BattleScreen() {
     }
   };
 
-  // Timer effect
+  // Timer
   useEffect(() => {
-    if (battle?.status !== 'active' || showResult || battleComplete) return;
+    if (battle?.status !== 'active' || showResult || battleComplete || showVSScreen) return;
     
     const timer = setInterval(() => {
       setTimeLeft(prev => {
@@ -164,17 +148,15 @@ export function BattleScreen() {
     }, 1000);
     
     return () => clearInterval(timer);
-  }, [battle?.status, showResult, currentQuestionIndex, battleComplete]);
+  }, [battle?.status, showResult, currentQuestionIndex, battleComplete, showVSScreen]);
 
   const handleReady = async () => {
     if (!battleId || !user) return;
-    
     try {
       await setParticipantReady(battleId, user.id);
       setIsReady(true);
       toast.success('You are ready!');
     } catch (error) {
-      console.error('Error setting ready:', error);
       toast.error('Failed to set ready status');
     }
   };
@@ -196,7 +178,6 @@ export function BattleScreen() {
       console.error('Error submitting answer:', error);
     }
     
-    // Move to next question after 1.4 seconds
     setTimeout(async () => {
       if (currentQuestionIndex < questions.length - 1) {
         setCurrentQuestionIndex(prev => prev + 1);
@@ -204,13 +185,9 @@ export function BattleScreen() {
         setSelectedAnswer(null);
         setShowResult(false);
       } else {
-        // Battle complete
         try {
-          const winnerId = await completeBattle(battleId);
+          await completeBattle(battleId);
           setBattleComplete(true);
-          if (winnerId === user.id) {
-            setShowConfetti(true);
-          }
         } catch (error) {
           console.error('Error completing battle:', error);
         }
@@ -244,16 +221,27 @@ export function BattleScreen() {
     );
   }
 
+  // VS Screen overlay
+  if (showVSScreen && battle.participants.length >= 2) {
+    return (
+      <BattleVSScreen
+        player1={battle.participants[0]}
+        player2={battle.participants[1]}
+        onComplete={() => setShowVSScreen(false)}
+      />
+    );
+  }
+
   // Waiting Room
   if (battle.status === 'waiting') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 pb-24">
         <div className="max-w-lg mx-auto p-4 space-y-6">
           <Card className="p-6 text-center">
-            <Swords className="w-16 h-16 mx-auto mb-4 text-primary" />
+            <Swords className="w-16 h-16 mx-auto mb-4 text-primary animate-pulse" />
             <h1 className="text-2xl font-bold mb-2">Waiting for Opponent</h1>
             <p className="text-muted-foreground mb-6">
-              Share the battle ID with a friend to start!
+              Share the room code to start!
             </p>
             
             <div className="bg-muted rounded-lg p-4 mb-6">
@@ -268,7 +256,6 @@ export function BattleScreen() {
               </div>
             </div>
             
-            {/* Participants */}
             <div className="space-y-3 mb-6">
               <h3 className="font-semibold">Players ({battle.participants.length}/2)</h3>
               {battle.participants.map(participant => (
@@ -310,75 +297,17 @@ export function BattleScreen() {
     );
   }
 
-  // Battle Complete
+  // Battle Complete - use new result screen
   if (battleComplete || battle.status === 'completed') {
-    const winner = battle.participants.find(p => p.user_id === battle.winner_id);
-    const isWinner = battle.winner_id === user?.id;
-    const myScore = battle.participants.find(p => p.user_id === user?.id)?.score || 0;
-    
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 pb-24">
-        {showConfetti && <Confetti isActive={true} />}
-        <div className="max-w-lg mx-auto p-4 space-y-6">
-          <Card className="p-6 text-center">
-            <div className={cn(
-              "w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4",
-              isWinner ? "bg-yellow-500/20" : "bg-muted"
-            )}>
-              {isWinner ? (
-                <Crown className="w-10 h-10 text-yellow-500" />
-              ) : (
-                <Swords className="w-10 h-10 text-muted-foreground" />
-              )}
-            </div>
-            
-            <h1 className="text-3xl font-bold mb-2">
-              {isWinner ? 'Victory!' : 'Defeat'}
-            </h1>
-            <p className="text-muted-foreground mb-6">
-              {isWinner ? 'Congratulations, you won!' : 'Better luck next time!'}
-            </p>
-            
-            {/* Scores */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              {battle.participants.map(participant => (
-                <div
-                  key={participant.user_id}
-                  className={cn(
-                    "p-4 rounded-xl",
-                    participant.user_id === battle.winner_id
-                      ? "bg-primary/10 border-2 border-primary"
-                      : "bg-muted"
-                  )}
-                >
-                  <Avatar className="w-12 h-12 mx-auto mb-2">
-                    <AvatarImage src={participant.avatar_url || undefined} />
-                    <AvatarFallback>
-                      {participant.username?.[0]?.toUpperCase() || '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <p className="font-semibold truncate">
-                    {participant.display_name || participant.username}
-                  </p>
-                  <p className="text-2xl font-bold text-primary">{participant.score}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {participant.answers_correct}/{questions.length} correct
-                  </p>
-                </div>
-              ))}
-            </div>
-            
-            <div className="flex gap-3">
-              <Button className="flex-1" onClick={() => navigate('/pvp')}>
-                New Battle
-              </Button>
-              <Button variant="outline" className="flex-1" onClick={() => navigate('/leaderboard')}>
-                Leaderboard
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </div>
+      <BattleResultScreen
+        participants={battle.participants}
+        winnerId={battle.winner_id}
+        currentUserId={user?.id || ''}
+        totalQuestions={questions.length}
+        onNewBattle={() => navigate('/pvp')}
+        onLeaderboard={() => navigate('/leaderboard')}
+      />
     );
   }
 
@@ -391,34 +320,20 @@ export function BattleScreen() {
     { label: 'D', value: 'D', text: currentQuestion.option_d },
   ] : [];
 
+  const p1 = battle.participants[0];
+  const p2 = battle.participants[1];
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 pb-8">
       <div className="max-w-lg mx-auto p-4 space-y-4">
-        {/* Opponent Score Bar */}
-        <div className="flex justify-between items-center bg-muted rounded-xl p-3">
-          {battle.participants.map((participant, idx) => (
-            <div
-              key={participant.user_id}
-              className={cn(
-                "flex items-center gap-2",
-                idx === 1 && "flex-row-reverse"
-              )}
-            >
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={participant.avatar_url || undefined} />
-                <AvatarFallback className="text-xs">
-                  {participant.username?.[0]?.toUpperCase() || '?'}
-                </AvatarFallback>
-              </Avatar>
-              <div className={cn("text-sm", idx === 1 && "text-right")}>
-                <p className="font-semibold truncate max-w-[80px]">
-                  {participant.user_id === user?.id ? 'You' : participant.username}
-                </p>
-                <p className="text-primary font-bold">{participant.score} pts</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Real-time Score Ticker */}
+        {p1 && p2 && (
+          <BattleScoreTicker
+            player1={p1}
+            player2={p2}
+            currentUserId={user?.id || ''}
+          />
+        )}
 
         {/* Timer & Progress */}
         <div className="flex items-center gap-3">
@@ -441,7 +356,7 @@ export function BattleScreen() {
 
         {/* Question */}
         {currentQuestion && (
-          <Card className="p-5">
+          <Card className="p-5 animate-fade-in">
             <span className={cn(
               "inline-block px-2.5 py-1 rounded-full text-[10px] font-semibold mb-3 uppercase",
               currentQuestion.difficulty === 'easy' && "bg-success/15 text-success",
@@ -468,18 +383,18 @@ export function BattleScreen() {
                 onClick={() => handleAnswer(option.value)}
                 disabled={showResult}
                 className={cn(
-                  "p-4 rounded-xl text-left transition-all duration-200 w-full",
-                  !showResult && "glass hover:bg-primary/10 active:scale-[0.98]",
+                  "p-4 rounded-xl text-left transition-all duration-200 w-full active:scale-[0.98]",
+                  !showResult && "bg-card border border-border/50 hover:bg-primary/10 hover:border-primary/30",
                   showResult && isCorrect && "bg-success/15 border-2 border-success",
-                  showResult && isSelected && !isCorrect && "bg-destructive/15 border-2 border-destructive",
+                  showResult && isSelected && !isCorrect && "bg-destructive/15 border-2 border-destructive animate-[shake_0.3s_ease-in-out]",
                   showResult && !isSelected && !isCorrect && "opacity-50"
                 )}
               >
                 <div className="flex items-center gap-3">
                   <span className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm shrink-0",
-                    showResult && isCorrect && "bg-success text-success-foreground",
-                    showResult && isSelected && !isCorrect && "bg-destructive text-destructive-foreground",
+                    showResult && isCorrect && "bg-success text-white",
+                    showResult && isSelected && !isCorrect && "bg-destructive text-white",
                     !showResult && "bg-muted"
                   )}>
                     {option.label}

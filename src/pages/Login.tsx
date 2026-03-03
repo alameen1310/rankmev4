@@ -31,9 +31,13 @@ export const Login = () => {
     const { error } = await signIn(email, password);
     
     if (error) {
+      let description = error.message || 'Please check your credentials';
+      if (error.message?.includes('Email not confirmed')) {
+        description = 'Please check your email and click the confirmation link before signing in.';
+      }
       toast({
         title: 'Login failed',
-        description: error.message || 'Please check your credentials',
+        description,
         variant: 'destructive',
       });
       return;

@@ -1,0 +1,223 @@
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Crown, Swords, TrendingUp, TrendingDown } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Confetti } from '@/components/Confetti';
+import { cn } from '@/lib/utils';
+
+interface Participant {
+  user_id: string;
+  username?: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  score?: number | null;
+  correct_answers?: number | null;
+  answers_correct?: number | null;
+}
+
+interface BattleResultScreenProps {
+  participants: Participant[];
+  winnerId: string | null;
+  currentUserId: string;
+  totalQuestions: number;
+  onNewBattle: () => void;
+  onLeaderboard: () => void;
+}
+
+const useCountUp = (target: number, duration: number, delay: number) => {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const start = Date.now();
+      const tick = () => {
+        const elapsed = Date.now() - start;
+        const progress = Math.min(elapsed / duration, 1);
+        setValue(Math.floor(progress * target));
+        if (progress < 1) requestAnimationFrame(tick);
+      };
+      tick();
+    }, delay);
+    return () => clearTimeout(timeout);
+  }, [target, duration, delay]);
+  return value;
+};
+
+export const BattleResultScreen = ({
+  participants,
+  winnerId,
+  currentUserId,
+  totalQuestions,
+  onNewBattle,
+  onLeaderboard,
+}: BattleResultScreenProps) => {
+  const [phase, setPhase] = useState(0);
+  const isWinner = winnerId === currentUserId;
+
+  const me = participants.find(p => p.user_id === currentUserId);
+  const opponent = participants.find(p => p.user_id !== currentUserId);
+
+  const myScore = useCountUp(me?.score || 0, 800, 400);
+  const opponentScore = useCountUp(opponent?.score || 0, 800, 400);
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setPhase(1), 200),   // Icon
+      setTimeout(() => setPhase(2), 800),   // Title
+      setTimeout(() => setPhase(3), 1200),  // Scores
+      setTimeout(() => setPhase(4), 2200),  // Rank change
+      setTimeout(() => setPhase(5), 2800),  // CTAs
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 pb-24 relative">
+      {isWinner && phase >= 2 && <Confetti isActive={true} />}
+
+      <div className="max-w-lg mx-auto p-4 pt-12 space-y-6">
+        {/* Icon */}
+        {phase >= 1 && (
+          <motion.div
+            initial={{ scale: 0, rotate: -45 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 12 }}
+            className="flex justify-center"
+          >
+            <div className={cn(
+              "w-24 h-24 rounded-full flex items-center justify-center",
+              isWinner
+                ? "bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 shadow-lg shadow-yellow-500/20"
+                : "bg-muted"
+            )}>
+              {isWinner ? (
+                <Crown className="w-12 h-12 text-yellow-500" />
+              ) : (
+                <Swords className="w-12 h-12 text-muted-foreground" />
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Title */}
+        {phase >= 2 && (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="text-center"
+          >
+            <h1 className={cn(
+              "text-4xl font-black",
+              isWinner ? "text-yellow-500" : "text-muted-foreground"
+            )}>
+              {isWinner ? 'VICTORY!' : 'DEFEAT'}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {isWinner ? 'You crushed it!' : 'Better luck next time!'}
+            </p>
+          </motion.div>
+        )}
+
+        {/* Score Cards */}
+        {phase >= 3 && (
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.4 }}
+            className="grid grid-cols-2 gap-4"
+          >
+            {/* Me */}
+            <div className={cn(
+              "p-5 rounded-2xl text-center relative overflow-hidden",
+              me?.user_id === winnerId
+                ? "bg-gradient-to-b from-yellow-500/10 to-yellow-600/5 border-2 border-yellow-500/40"
+                : "bg-muted/50 border border-border"
+            )}>
+              {me?.user_id === winnerId && (
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-t from-yellow-500/10 to-transparent"
+                  animate={{ opacity: [0.3, 0.6, 0.3] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+              )}
+              <Avatar className="w-14 h-14 mx-auto mb-2 relative z-10">
+                <AvatarImage src={me?.avatar_url || undefined} />
+                <AvatarFallback className="text-lg font-bold">
+                  {(me?.username || 'Y')[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <p className="font-bold truncate relative z-10">You</p>
+              <p className="text-3xl font-black text-primary mt-1 relative z-10">{myScore}</p>
+              <p className="text-xs text-muted-foreground relative z-10">
+                {me?.correct_answers ?? me?.answers_correct ?? 0}/{totalQuestions} correct
+              </p>
+            </div>
+
+            {/* Opponent */}
+            <div className={cn(
+              "p-5 rounded-2xl text-center relative overflow-hidden",
+              opponent?.user_id === winnerId
+                ? "bg-gradient-to-b from-yellow-500/10 to-yellow-600/5 border-2 border-yellow-500/40"
+                : "bg-muted/50 border border-border"
+            )}>
+              <Avatar className="w-14 h-14 mx-auto mb-2">
+                <AvatarImage src={opponent?.avatar_url || undefined} />
+                <AvatarFallback className="text-lg font-bold">
+                  {(opponent?.username || 'O')[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <p className="font-bold truncate">{opponent?.display_name || opponent?.username || 'Opponent'}</p>
+              <p className="text-3xl font-black text-primary mt-1">{opponentScore}</p>
+              <p className="text-xs text-muted-foreground">
+                {opponent?.correct_answers ?? opponent?.answers_correct ?? 0}/{totalQuestions} correct
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Rank change indicator */}
+        {phase >= 4 && (
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 200 }}
+            className={cn(
+              "flex items-center justify-center gap-2 py-3 px-4 rounded-xl mx-auto w-fit",
+              isWinner
+                ? "bg-success/10 text-success"
+                : "bg-destructive/10 text-destructive"
+            )}
+          >
+            {isWinner ? (
+              <>
+                <TrendingUp className="w-5 h-5" />
+                <span className="font-bold">+25 Rank Points</span>
+              </>
+            ) : (
+              <>
+                <TrendingDown className="w-5 h-5" />
+                <span className="font-bold">-15 Rank Points</span>
+              </>
+            )}
+          </motion.div>
+        )}
+
+        {/* CTAs */}
+        {phase >= 5 && (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="flex gap-3"
+          >
+            <Button variant="hero" className="flex-1" onClick={onNewBattle}>
+              New Battle
+            </Button>
+            <Button variant="outline" className="flex-1" onClick={onLeaderboard}>
+              Leaderboard
+            </Button>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+};

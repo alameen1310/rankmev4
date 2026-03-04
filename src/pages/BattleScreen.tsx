@@ -10,6 +10,7 @@ import {
   type Battle,
 } from '@/services/battles';
 import { supabase } from '@/integrations/supabase/client';
+import { soundEngine } from '@/lib/sounds';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -171,6 +172,13 @@ export function BattleScreen() {
     const currentQuestion = questions[currentQuestionIndex];
     const isCorrect = answer === currentQuestion?.correct_answer;
     const points = isCorrect ? Math.max(100, 150 - Math.floor(timeSpent / 100)) : 0;
+    
+    // Play sound effect
+    if (isCorrect) {
+      soundEngine.playCorrect();
+    } else {
+      soundEngine.playWrong();
+    }
     
     try {
       await submitBattleAnswer(battleId, user.id, isCorrect, points);

@@ -13,7 +13,7 @@ export const Header = () => {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border/50 safe-top">
-      <div className="flex items-center justify-between h-14 px-4 max-w-lg mx-auto">
+      <div className="flex items-center justify-between h-14 px-4 max-w-7xl mx-auto">
         <Link to="/" className="flex items-center gap-2 group">
           <div className="relative">
             <Trophy className="h-6 w-6 text-primary transition-transform group-hover:scale-110" />

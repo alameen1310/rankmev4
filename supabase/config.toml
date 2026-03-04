@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.friend-suggestions]
 verify_jwt = false
+
+[functions.match-players]
+verify_jwt = false

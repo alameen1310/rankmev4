@@ -737,6 +737,71 @@ export type Database = {
           },
         ]
       }
+      matchmaking_queue: {
+        Row: {
+          battle_id: string | null
+          created_at: string
+          id: string
+          match_type: string
+          matched_with: string | null
+          status: string
+          subject_id: number | null
+          tier: string | null
+          user_id: string
+        }
+        Insert: {
+          battle_id?: string | null
+          created_at?: string
+          id?: string
+          match_type?: string
+          matched_with?: string | null
+          status?: string
+          subject_id?: number | null
+          tier?: string | null
+          user_id: string
+        }
+        Update: {
+          battle_id?: string | null
+          created_at?: string
+          id?: string
+          match_type?: string
+          matched_with?: string | null
+          status?: string
+          subject_id?: number | null
+          tier?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matchmaking_queue_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "battles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matchmaking_queue_matched_with_fkey"
+            columns: ["matched_with"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matchmaking_queue_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matchmaking_queue_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_reactions: {
         Row: {
           created_at: string | null

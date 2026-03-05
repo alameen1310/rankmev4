@@ -55,17 +55,6 @@ export async function sendFriendRequest(fromUserId: string, toUserId: string): P
     throw error;
   }
   
-  // Create notification for the recipient
-  await supabase
-    .from('notifications')
-    .insert({
-      user_id: toUserId,
-      type: 'friend_request',
-      title: 'New Friend Request',
-      message: 'You have a new friend request!',
-      data: { request_id: data.id, from_user_id: fromUserId },
-    });
-  
   return data as FriendRequest;
 }
 

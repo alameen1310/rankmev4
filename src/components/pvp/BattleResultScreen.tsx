@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Confetti } from '@/components/Confetti';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Participant {
   user_id: string;
@@ -21,6 +22,8 @@ interface BattleResultScreenProps {
   winnerId: string | null;
   currentUserId: string;
   totalQuestions: number;
+  battleId: string;
+  matchType: 'casual' | 'ranked';
   onNewBattle: () => void;
   onLeaderboard: () => void;
 }
@@ -48,10 +51,13 @@ export const BattleResultScreen = ({
   winnerId,
   currentUserId,
   totalQuestions,
+  battleId,
+  matchType,
   onNewBattle,
   onLeaderboard,
 }: BattleResultScreenProps) => {
   const [phase, setPhase] = useState(0);
+  const [rankDelta, setRankDelta] = useState<number | null>(null);
   const isWinner = winnerId === currentUserId;
 
   const me = participants.find(p => p.user_id === currentUserId);
@@ -62,21 +68,39 @@ export const BattleResultScreen = ({
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 200),   // Icon
-      setTimeout(() => setPhase(2), 800),   // Title
-      setTimeout(() => setPhase(3), 1200),  // Scores
-      setTimeout(() => setPhase(4), 2200),  // Rank change
-      setTimeout(() => setPhase(5), 2800),  // CTAs
+      setTimeout(() => setPhase(1), 200),
+      setTimeout(() => setPhase(2), 800),
+      setTimeout(() => setPhase(3), 1200),
+      setTimeout(() => setPhase(4), 2200),
+      setTimeout(() => setPhase(5), 2800),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
+
+  useEffect(() => {
+    if (matchType !== 'ranked') return;
+
+    const loadRankDelta = async () => {
+      const { data } = await supabase
+        .from('battle_rank_changes')
+        .select('delta')
+        .eq('battle_id', battleId)
+        .eq('user_id', currentUserId)
+        .maybeSingle();
+
+      if (data) {
+        setRankDelta(data.delta);
+      }
+    };
+
+    loadRankDelta();
+  }, [battleId, currentUserId, matchType]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 pb-24 relative">
       {isWinner && phase >= 2 && <Confetti isActive={true} />}
 
       <div className="max-w-lg mx-auto p-4 pt-12 space-y-6">
-        {/* Icon */}
         {phase >= 1 && (
           <motion.div
             initial={{ scale: 0, rotate: -45 }}
@@ -87,11 +111,11 @@ export const BattleResultScreen = ({
             <div className={cn(
               "w-24 h-24 rounded-full flex items-center justify-center",
               isWinner
-                ? "bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 shadow-lg shadow-yellow-500/20"
+                ? "bg-gradient-to-br from-warning/20 to-warning/10 shadow-lg shadow-warning/20"
                 : "bg-muted"
             )}>
               {isWinner ? (
-                <Crown className="w-12 h-12 text-yellow-500" />
+                <Crown className="w-12 h-12 text-warning" />
               ) : (
                 <Swords className="w-12 h-12 text-muted-foreground" />
               )}
@@ -99,7 +123,6 @@ export const BattleResultScreen = ({
           </motion.div>
         )}
 
-        {/* Title */}
         {phase >= 2 && (
           <motion.div
             initial={{ y: 20, opacity: 0 }}
@@ -108,7 +131,7 @@ export const BattleResultScreen = ({
           >
             <h1 className={cn(
               "text-4xl font-black",
-              isWinner ? "text-yellow-500" : "text-muted-foreground"
+              isWinner ? "text-warning" : "text-muted-foreground"
             )}>
               {isWinner ? 'VICTORY!' : 'DEFEAT'}
             </h1>
@@ -118,7 +141,6 @@ export const BattleResultScreen = ({
           </motion.div>
         )}
 
-        {/* Score Cards */}
         {phase >= 3 && (
           <motion.div
             initial={{ y: 30, opacity: 0 }}
@@ -126,20 +148,12 @@ export const BattleResultScreen = ({
             transition={{ duration: 0.4 }}
             className="grid grid-cols-2 gap-4"
           >
-            {/* Me */}
             <div className={cn(
               "p-5 rounded-2xl text-center relative overflow-hidden",
               me?.user_id === winnerId
-                ? "bg-gradient-to-b from-yellow-500/10 to-yellow-600/5 border-2 border-yellow-500/40"
+                ? "bg-gradient-to-b from-warning/10 to-warning/5 border-2 border-warning/40"
                 : "bg-muted/50 border border-border"
             )}>
-              {me?.user_id === winnerId && (
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-t from-yellow-500/10 to-transparent"
-                  animate={{ opacity: [0.3, 0.6, 0.3] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-              )}
               <Avatar className="w-14 h-14 mx-auto mb-2 relative z-10">
                 <AvatarImage src={me?.avatar_url || undefined} />
                 <AvatarFallback className="text-lg font-bold">
@@ -153,11 +167,10 @@ export const BattleResultScreen = ({
               </p>
             </div>
 
-            {/* Opponent */}
             <div className={cn(
               "p-5 rounded-2xl text-center relative overflow-hidden",
               opponent?.user_id === winnerId
-                ? "bg-gradient-to-b from-yellow-500/10 to-yellow-600/5 border-2 border-yellow-500/40"
+                ? "bg-gradient-to-b from-warning/10 to-warning/5 border-2 border-warning/40"
                 : "bg-muted/50 border border-border"
             )}>
               <Avatar className="w-14 h-14 mx-auto mb-2">
@@ -175,7 +188,6 @@ export const BattleResultScreen = ({
           </motion.div>
         )}
 
-        {/* Rank change indicator */}
         {phase >= 4 && (
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
@@ -183,26 +195,31 @@ export const BattleResultScreen = ({
             transition={{ type: 'spring', stiffness: 200 }}
             className={cn(
               "flex items-center justify-center gap-2 py-3 px-4 rounded-xl mx-auto w-fit",
-              isWinner
-                ? "bg-success/10 text-success"
-                : "bg-destructive/10 text-destructive"
+              matchType === 'ranked'
+                ? (rankDelta || 0) >= 0
+                  ? "bg-success/10 text-success"
+                  : "bg-destructive/10 text-destructive"
+                : "bg-muted text-muted-foreground"
             )}
           >
-            {isWinner ? (
-              <>
-                <TrendingUp className="w-5 h-5" />
-                <span className="font-bold">+25 Rank Points</span>
-              </>
+            {matchType === 'ranked' ? (
+              (rankDelta || 0) >= 0 ? (
+                <>
+                  <TrendingUp className="w-5 h-5" />
+                  <span className="font-bold">+{Math.abs(rankDelta || 0)} Rank Points</span>
+                </>
+              ) : (
+                <>
+                  <TrendingDown className="w-5 h-5" />
+                  <span className="font-bold">-{Math.abs(rankDelta || 0)} Rank Points</span>
+                </>
+              )
             ) : (
-              <>
-                <TrendingDown className="w-5 h-5" />
-                <span className="font-bold">-15 Rank Points</span>
-              </>
+              <span className="font-bold">Casual Match • No Rank Change</span>
             )}
           </motion.div>
         )}
 
-        {/* CTAs */}
         {phase >= 5 && (
           <motion.div
             initial={{ y: 20, opacity: 0 }}

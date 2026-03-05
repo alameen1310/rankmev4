@@ -136,60 +136,8 @@ export const GameStateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         )
         .subscribe();
 
-      // Listen for new friend requests
-      const friendReqChannel = supabase
-        .channel(`friend_requests:${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'friend_requests',
-            filter: `to_user_id=eq.${user.id}`,
-          },
-          async (payload) => {
-            const req = payload.new as any;
-            // Create a notification for the friend request
-            await supabase.from('notifications').insert({
-              user_id: user.id,
-              type: 'friend_request',
-              title: 'New Friend Request',
-              message: 'Someone wants to be your friend!',
-              data: { from_user_id: req.from_user_id },
-            });
-          }
-        )
-        .subscribe();
-
-      // Listen for new direct messages
-      const dmChannel = supabase
-        .channel(`direct_messages:${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'direct_messages',
-            filter: `receiver_id=eq.${user.id}`,
-          },
-          async (payload) => {
-            const msg = payload.new as any;
-            // Create a notification for the message
-            await supabase.from('notifications').insert({
-              user_id: user.id,
-              type: 'chat',
-              title: 'New Message',
-              message: msg.message_type === 'text' ? (msg.message || 'New message').slice(0, 100) : 'Sent you a media message',
-              data: { sender_id: msg.sender_id, chatId: msg.sender_id },
-            });
-          }
-        )
-        .subscribe();
-
       return () => {
         supabase.removeChannel(notifChannel);
-        supabase.removeChannel(friendReqChannel);
-        supabase.removeChannel(dmChannel);
       };
     } else {
       setNotifications([]);

@@ -313,6 +313,47 @@ export type Database = {
           },
         ]
       }
+      battle_rank_changes: {
+        Row: {
+          battle_id: string
+          created_at: string
+          delta: number
+          id: string
+          opponent_id: string
+          reason: string
+          repeat_count: number
+          user_id: string
+        }
+        Insert: {
+          battle_id: string
+          created_at?: string
+          delta?: number
+          id?: string
+          opponent_id: string
+          reason?: string
+          repeat_count?: number
+          user_id: string
+        }
+        Update: {
+          battle_id?: string
+          created_at?: string
+          delta?: number
+          id?: string
+          opponent_id?: string
+          reason?: string
+          repeat_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_rank_changes_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "battles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       battles: {
         Row: {
           completed_at: string | null
@@ -320,6 +361,7 @@ export type Database = {
           created_by: string | null
           id: string
           is_private: boolean | null
+          match_type: string
           mode: string | null
           room_code: string | null
           started_at: string | null
@@ -336,6 +378,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_private?: boolean | null
+          match_type?: string
           mode?: string | null
           room_code?: string | null
           started_at?: string | null
@@ -352,6 +395,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_private?: boolean | null
+          match_type?: string
           mode?: string | null
           room_code?: string | null
           started_at?: string | null
@@ -953,6 +997,7 @@ export type Database = {
           last_payment_reference: string | null
           longest_streak: number | null
           premium_expires_at: string | null
+          rank_points: number
           showcase_badges: string[] | null
           tier: string | null
           total_correct_answers: number | null
@@ -983,6 +1028,7 @@ export type Database = {
           last_payment_reference?: string | null
           longest_streak?: number | null
           premium_expires_at?: string | null
+          rank_points?: number
           showcase_badges?: string[] | null
           tier?: string | null
           total_correct_answers?: number | null
@@ -1013,6 +1059,7 @@ export type Database = {
           last_payment_reference?: string | null
           longest_streak?: number | null
           premium_expires_at?: string | null
+          rank_points?: number
           showcase_badges?: string[] | null
           tier?: string | null
           total_correct_answers?: number | null

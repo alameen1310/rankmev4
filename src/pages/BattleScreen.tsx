@@ -313,6 +313,8 @@ export function BattleScreen() {
         winnerId={battle.winner_id}
         currentUserId={user?.id || ''}
         totalQuestions={questions.length}
+        battleId={battle.id}
+        matchType={((battle as any).match_type || 'casual') as 'casual' | 'ranked'}
         onNewBattle={() => navigate('/pvp')}
         onLeaderboard={() => navigate('/leaderboard')}
       />

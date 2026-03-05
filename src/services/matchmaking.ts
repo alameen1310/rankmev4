@@ -1,6 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { createBattle, joinBattle } from './battles';
-import type { Subject } from '@/types';
 
 export interface QueueEntry {
   id: string;
@@ -8,19 +6,10 @@ export interface QueueEntry {
   match_type: 'casual' | 'ranked';
   subject_id: number | null;
   tier: string | null;
-  status: 'searching' | 'matched' | 'cancelled' | 'expired';
+  status: 'searching' | 'matching' | 'matched' | 'cancelled' | 'expired';
   matched_with: string | null;
   battle_id: string | null;
   created_at: string;
-}
-
-// Tier proximity for matching
-const TIER_ORDER = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'champion'];
-
-function tierDistance(a: string | null, b: string | null): number {
-  const ai = TIER_ORDER.indexOf(a || 'bronze');
-  const bi = TIER_ORDER.indexOf(b || 'bronze');
-  return Math.abs(ai - bi);
 }
 
 // Join matchmaking queue
@@ -30,12 +19,11 @@ export async function joinQueue(
   subjectId: number | null,
   tier: string | null
 ): Promise<QueueEntry> {
-  // First cancel any existing searching entries
   await supabase
     .from('matchmaking_queue')
     .update({ status: 'cancelled' })
     .eq('user_id', userId)
-    .eq('status', 'searching');
+    .in('status', ['searching', 'matching']);
 
   const { data, error } = await supabase
     .from('matchmaking_queue')
@@ -63,94 +51,45 @@ export async function leaveQueue(userId: string): Promise<void> {
     .from('matchmaking_queue')
     .update({ status: 'cancelled' })
     .eq('user_id', userId)
-    .eq('status', 'searching');
+    .in('status', ['searching', 'matching']);
 
   if (error) {
     console.error('[Matchmaking] Error leaving queue:', error);
   }
 }
 
-// Poll for a match (called periodically by the searching player)
+// Poll for a match via backend matcher
 export async function findMatch(
-  userId: string,
-  matchType: 'casual' | 'ranked',
-  subjectId: number | null,
-  tier: string | null,
+  _userId: string,
+  _matchType: 'casual' | 'ranked',
+  _subjectId: number | null,
+  _tier: string | null,
   expandedSearch: boolean = false
 ): Promise<{ matched: boolean; battleId?: string; opponentId?: string }> {
-  // Find other searching players with compatible criteria
-  let query = supabase
-    .from('matchmaking_queue')
-    .select('*')
-    .eq('status', 'searching')
-    .eq('match_type', matchType)
-    .neq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(10);
+  const { data, error } = await supabase.functions.invoke('match-players', {
+    body: { expandedSearch },
+  });
 
-  // For casual, match same subject
-  if (matchType === 'casual' && subjectId) {
-    query = query.eq('subject_id', subjectId);
-  }
-
-  const { data: candidates, error } = await query;
-
-  if (error || !candidates || candidates.length === 0) {
+  if (error) {
+    console.error('[Matchmaking] match-players invoke error:', error);
     return { matched: false };
   }
 
-  // Filter by tier proximity
-  let bestMatch = candidates[0];
-  if (matchType === 'ranked' && !expandedSearch) {
-    // Prefer same tier, then ±1
-    const sorted = candidates.sort((a: any, b: any) => 
-      tierDistance(a.tier, tier) - tierDistance(b.tier, tier)
-    );
-    const close = sorted.filter((c: any) => tierDistance(c.tier, tier) <= (expandedSearch ? 3 : 1));
-    if (close.length > 0) {
-      bestMatch = close[0];
-    } else if (!expandedSearch) {
-      return { matched: false };
-    }
+  const payload = (data || {}) as {
+    matched?: boolean;
+    battleId?: string;
+    opponentId?: string;
+  };
+
+  if (payload.matched && payload.battleId) {
+    return {
+      matched: true,
+      battleId: payload.battleId,
+      opponentId: payload.opponentId,
+    };
   }
 
-  const opponent = bestMatch as QueueEntry;
-
-  try {
-    // Determine subject slug for battle creation
-    const subjectSlugMap: Record<number, Subject> = {};
-    const { data: subjects } = await supabase.from('subjects').select('id, slug');
-    if (subjects) {
-      subjects.forEach((s: any) => { subjectSlugMap[s.id] = s.slug as Subject; });
-    }
-
-    const battleSubject = subjectId ? (subjectSlugMap[subjectId] || 'mathematics') : 'mathematics';
-
-    // Create the battle
-    const battle = await createBattle(userId, battleSubject, false);
-
-    // Join opponent
-    await joinBattle(battle.id, opponent.user_id);
-
-    // Update both queue entries
-    await supabase
-      .from('matchmaking_queue')
-      .update({ 
-        status: 'matched', 
-        matched_with: opponent.user_id, 
-        battle_id: battle.id 
-      })
-      .eq('user_id', userId)
-      .eq('status', 'searching');
-
-    // We can't update opponent's entry due to RLS (they own it)
-    // Instead, the opponent will detect the match via realtime subscription
-
-    return { matched: true, battleId: battle.id, opponentId: opponent.user_id };
-  } catch (err) {
-    console.error('[Matchmaking] Error creating match:', err);
-    return { matched: false };
-  }
+  return { matched: false };
 }
 
 // Subscribe to queue changes for the current user
@@ -158,7 +97,7 @@ export function subscribeToQueue(
   userId: string,
   onUpdate: (entry: QueueEntry) => void
 ) {
-  const channel = supabase
+  return supabase
     .channel(`matchmaking:${userId}`)
     .on(
       'postgres_changes',
@@ -175,8 +114,6 @@ export function subscribeToQueue(
       }
     )
     .subscribe();
-
-  return channel;
 }
 
 // Check if user is already in an active match
@@ -191,5 +128,6 @@ export async function isInActiveMatch(userId: string): Promise<string | null> {
   if (data && data.length > 0) {
     return (data[0] as any).battle_id;
   }
+
   return null;
 }

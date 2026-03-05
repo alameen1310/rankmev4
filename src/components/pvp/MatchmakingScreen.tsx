@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
 import { joinQueue, leaveQueue, findMatch, subscribeToQueue, type QueueEntry } from '@/services/matchmaking';
 import { supabase } from '@/integrations/supabase/client';
 import { soundEngine } from '@/lib/sounds';
 import { Button } from '@/components/ui/button';
 import { Loader2, X, Swords, Search } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface MatchmakingScreenProps {
   matchType: 'casual' | 'ranked';
@@ -18,18 +18,47 @@ interface MatchmakingScreenProps {
 export function MatchmakingScreen({ matchType, subjectId, subjectName, onCancel }: MatchmakingScreenProps) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+
   const [elapsed, setElapsed] = useState(0);
   const [status, setStatus] = useState<'searching' | 'found' | 'timeout' | 'error'>('searching');
   const [expandSearch, setExpandSearch] = useState(false);
+  const [searchNonce, setSearchNonce] = useState(0);
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const statusRef = useRef(status);
+  const expandSearchRef = useRef(expandSearch);
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
+  useEffect(() => {
+    expandSearchRef.current = expandSearch;
+  }, [expandSearch]);
 
   useEffect(() => {
     if (!user || !profile) return;
 
     let cancelled = false;
+    let queueChannel: RealtimeChannel | null = null;
+
+    const stopTimers = () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
 
     const start = async () => {
+      setStatus('searching');
+      setElapsed(0);
+      setExpandSearch(false);
+
       try {
         await joinQueue(user.id, matchType, subjectId, profile.tier || 'bronze');
       } catch {
@@ -37,71 +66,76 @@ export function MatchmakingScreen({ matchType, subjectId, subjectName, onCancel 
         return;
       }
 
-      // Subscribe to realtime updates on our queue entry
-      const channel = subscribeToQueue(user.id, (entry: QueueEntry) => {
+      queueChannel = subscribeToQueue(user.id, (entry: QueueEntry) => {
         if (entry.status === 'matched' && entry.battle_id) {
+          stopTimers();
           setStatus('found');
           soundEngine.playMatchFound();
           setTimeout(() => {
             if (!cancelled) navigate(`/battle/${entry.battle_id}`);
-          }, 1500);
+          }, 1200);
         }
       });
 
-      // Poll for matches every 3 seconds
       pollRef.current = setInterval(async () => {
-        if (cancelled || status !== 'searching') return;
-        const result = await findMatch(user.id, matchType, subjectId, profile.tier || 'bronze', expandSearch);
+        if (cancelled || statusRef.current !== 'searching') return;
+
+        const result = await findMatch(
+          user.id,
+          matchType,
+          subjectId,
+          profile.tier || 'bronze',
+          expandSearchRef.current
+        );
+
         if (result.matched && result.battleId) {
+          stopTimers();
           setStatus('found');
           soundEngine.playMatchFound();
           setTimeout(() => {
             if (!cancelled) navigate(`/battle/${result.battleId}`);
-          }, 1500);
+          }, 1200);
         }
-      }, 3000);
+      }, 2500);
 
-      // Elapsed timer
       timerRef.current = setInterval(() => {
-        setElapsed(prev => {
+        setElapsed((prev) => {
           const next = prev + 1;
-          if (next >= 10 && !expandSearch) setExpandSearch(true);
-          if (next >= 30) {
-            setStatus('timeout');
-            return next;
+
+          if (next >= 10) {
+            setExpandSearch(true);
           }
+
+          if (next >= 30) {
+            stopTimers();
+            setStatus('timeout');
+            leaveQueue(user.id);
+          }
+
           return next;
         });
       }, 1000);
-
-      return () => {
-        cancelled = true;
-        supabase.removeChannel(channel);
-      };
     };
 
     start();
 
     return () => {
       cancelled = true;
-      if (pollRef.current) clearInterval(pollRef.current);
-      if (timerRef.current) clearInterval(timerRef.current);
+      stopTimers();
+      if (queueChannel) {
+        supabase.removeChannel(queueChannel);
+      }
       leaveQueue(user.id);
     };
-  }, [user, profile]);
+  }, [user?.id, profile?.tier, matchType, subjectId, searchNonce, navigate]);
 
   const handleCancel = async () => {
     if (user) await leaveQueue(user.id);
     onCancel();
   };
 
-  const handleRetry = async () => {
-    setStatus('searching');
-    setElapsed(0);
-    setExpandSearch(false);
-    if (user && profile) {
-      await joinQueue(user.id, matchType, subjectId, profile.tier || 'bronze');
-    }
+  const handleRetry = () => {
+    setSearchNonce((prev) => prev + 1);
   };
 
   return (
@@ -109,7 +143,6 @@ export function MatchmakingScreen({ matchType, subjectId, subjectName, onCancel 
       <div className="text-center space-y-6 px-6 max-w-sm w-full">
         {status === 'searching' && (
           <>
-            {/* Animated search ring */}
             <div className="relative w-32 h-32 mx-auto">
               <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
               <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />

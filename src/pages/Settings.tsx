@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, CreditCard, Building, User, Loader2, CheckCircle, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Save, CreditCard, Building, User, Loader2, CheckCircle, Volume2, VolumeX, Bell, MessageSquare, Users, Swords, Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,12 +11,42 @@ import { supabase } from '@/integrations/supabase/client';
 import { soundEngine } from '@/lib/sounds';
 import { toast } from 'sonner';
 
+const NOTIFICATION_PREFS_KEY = 'rankme_notification_prefs';
+
+interface NotificationPrefs {
+  friend_requests: boolean;
+  chat: boolean;
+  battle_updates: boolean;
+  system: boolean;
+}
+
+const defaultPrefs: NotificationPrefs = {
+  friend_requests: true,
+  chat: true,
+  battle_updates: true,
+  system: true,
+};
+
+function loadNotificationPrefs(): NotificationPrefs {
+  try {
+    const stored = localStorage.getItem(NOTIFICATION_PREFS_KEY);
+    return stored ? { ...defaultPrefs, ...JSON.parse(stored) } : defaultPrefs;
+  } catch {
+    return defaultPrefs;
+  }
+}
+
+function saveNotificationPrefs(prefs: NotificationPrefs) {
+  localStorage.setItem(NOTIFICATION_PREFS_KEY, JSON.stringify(prefs));
+}
+
 export const Settings = () => {
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(defaultPrefs);
 
   const [bankDetails, setBankDetails] = useState({
     bank_name: '',
@@ -26,6 +56,7 @@ export const Settings = () => {
 
   useEffect(() => {
     setSoundEnabled(soundEngine.isEnabled());
+    setNotifPrefs(loadNotificationPrefs());
     if (user) {
       fetchBankDetails();
     }
@@ -85,6 +116,13 @@ export const Settings = () => {
     }
   };
 
+  const handleToggleNotifPref = (key: keyof NotificationPrefs, value: boolean) => {
+    const updated = { ...notifPrefs, [key]: value };
+    setNotifPrefs(updated);
+    saveNotificationPrefs(updated);
+    toast.success(`${key.replace('_', ' ')} notifications ${value ? 'enabled' : 'muted'}`);
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -96,6 +134,13 @@ export const Settings = () => {
       </div>
     );
   }
+
+  const notifOptions = [
+    { key: 'friend_requests' as const, label: 'Friend Requests', desc: 'New friend request alerts', icon: Users },
+    { key: 'chat' as const, label: 'Chat Messages', desc: 'New message notifications', icon: MessageSquare },
+    { key: 'battle_updates' as const, label: 'Battle Updates', desc: 'PvP match & rank changes', icon: Swords },
+    { key: 'system' as const, label: 'System Alerts', desc: 'Rewards, badges & announcements', icon: Bell },
+  ];
 
   return (
     <div className="min-h-screen pb-24">
@@ -109,75 +154,105 @@ export const Settings = () => {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-primary" />
-              Bank Details
-            </CardTitle>
-            <CardDescription>Add your bank account details to receive cash prizes</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="bank_name" className="flex items-center gap-2">
-                <Building className="h-4 w-4" />
-                Bank Name
-              </Label>
-              <Input
-                id="bank_name"
-                placeholder="e.g., First Bank, GTBank, Access Bank"
-                value={bankDetails.bank_name}
-                onChange={(e) => setBankDetails((prev) => ({ ...prev, bank_name: e.target.value }))}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Left column */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Bank Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-primary" />
+                Bank Details
+              </CardTitle>
+              <CardDescription>Add your bank account details to receive cash prizes</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="account_number" className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Account Number
+                <Label htmlFor="bank_name" className="flex items-center gap-2">
+                  <Building className="h-4 w-4" />
+                  Bank Name
                 </Label>
                 <Input
-                  id="account_number"
-                  placeholder="Enter account number"
-                  value={bankDetails.account_number}
-                  onChange={(e) => setBankDetails((prev) => ({ ...prev, account_number: e.target.value }))}
-                  maxLength={15}
+                  id="bank_name"
+                  placeholder="e.g., First Bank, GTBank, Access Bank"
+                  value={bankDetails.bank_name}
+                  onChange={(e) => setBankDetails((prev) => ({ ...prev, bank_name: e.target.value }))}
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="account_name" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Account Name
-                </Label>
-                <Input
-                  id="account_name"
-                  placeholder="Name on account"
-                  value={bankDetails.account_name}
-                  onChange={(e) => setBankDetails((prev) => ({ ...prev, account_name: e.target.value }))}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="account_number" className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Account Number
+                  </Label>
+                  <Input
+                    id="account_number"
+                    placeholder="Enter account number"
+                    value={bankDetails.account_number}
+                    onChange={(e) => setBankDetails((prev) => ({ ...prev, account_number: e.target.value }))}
+                    maxLength={15}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="account_name" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Account Name
+                  </Label>
+                  <Input
+                    id="account_name"
+                    placeholder="Name on account"
+                    value={bankDetails.account_name}
+                    onChange={(e) => setBankDetails((prev) => ({ ...prev, account_name: e.target.value }))}
+                  />
+                </div>
               </div>
-            </div>
 
-            <Button onClick={handleSave} disabled={isLoading} className="w-full mt-2">
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...
-                </>
-              ) : isSaved ? (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" /> Saved!
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" /> Save Settings
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+              <Button onClick={handleSave} disabled={isLoading} className="w-full mt-2">
+                {isLoading ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                ) : isSaved ? (
+                  <><CheckCircle className="h-4 w-4 mr-2" /> Saved!</>
+                ) : (
+                  <><Save className="h-4 w-4 mr-2" /> Save Settings</>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
 
+          {/* Notification Preferences */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-primary" />
+                Notification Preferences
+              </CardTitle>
+              <CardDescription>Choose which notifications you want to receive</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {notifOptions.map(opt => {
+                const Icon = opt.icon;
+                return (
+                  <div key={opt.key} className="flex items-center justify-between rounded-xl border border-border/60 p-4">
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium text-sm">{opt.label}</p>
+                        <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={notifPrefs[opt.key]}
+                      onCheckedChange={(v) => handleToggleNotifPref(opt.key, v)}
+                    />
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right column */}
         <div className="space-y-6">
           <Card>
             <CardHeader>

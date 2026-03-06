@@ -105,6 +105,11 @@ export const Leaderboard = () => {
   const userEntry = userRank ? leaderboardData.find(e => e.rank === userRank) : null;
   const userInView = userRank ? filteredData.some(e => e.rank === userRank) : false;
 
+  // Show podium only when there are 3+ entries (no search/filter active)
+  const showPodium = activeTab === 'global' && !searchQuery && selectedTiers.length === 0 && filteredData.length >= 3;
+  // Start list after podium entries if podium is shown
+  const listStartIndex = showPodium ? 3 : 0;
+
   const handleLoadMore = () => {
     setVisibleCount(prev => Math.min(prev + 20, filteredData.length));
   };
@@ -124,7 +129,7 @@ export const Leaderboard = () => {
     <div className="min-h-screen pattern-trophy">
       {/* Sticky Header */}
       <div className="glass-strong sticky top-14 z-40 border-b border-border/50">
-        <div className="max-w-lg mx-auto px-4 py-3 space-y-3">
+        <div className="max-w-3xl mx-auto px-4 py-3 space-y-3">
           {/* Title Row */}
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold flex items-center gap-2">
@@ -176,9 +181,9 @@ export const Leaderboard = () => {
       </div>
 
       {/* Leaderboard Content */}
-      <div className="max-w-lg mx-auto px-4 py-4">
-        {/* Top 3 Podium - Only for global tab */}
-        {activeTab === 'global' && !searchQuery && selectedTiers.length === 0 && filteredData.length >= 3 && (
+      <div className="max-w-3xl mx-auto px-4 py-4">
+        {/* Top 3 Podium */}
+        {showPodium && (
           <div className="flex items-end justify-center gap-2 mb-6 pt-4">
             {/* 2nd Place */}
             <div className="flex flex-col items-center animate-slide-in-bottom" style={{ animationDelay: '150ms' }}>
@@ -230,7 +235,7 @@ export const Leaderboard = () => {
         {/* Results count */}
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs text-muted-foreground">
-            {filteredData.length} players
+            {filteredData.length} player{filteredData.length !== 1 ? 's' : ''}
           </span>
           <div className="flex items-center gap-2">
             {searchQuery && (
@@ -258,7 +263,7 @@ export const Leaderboard = () => {
         ) : (
           <div className="space-y-2 stagger-children">
             {filteredData
-              .slice(activeTab === 'global' && !searchQuery && selectedTiers.length === 0 ? 3 : 0, visibleCount)
+              .slice(listStartIndex, visibleCount)
               .map((entry) => (
                 <LeaderboardRow
                   key={entry.id}
@@ -282,15 +287,17 @@ export const Leaderboard = () => {
         {/* Empty state */}
         {filteredData.length === 0 && !isLoading && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No players found</p>
+            <Trophy className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-40" />
+            <h3 className="font-semibold mb-1">No players yet</h3>
+            <p className="text-sm text-muted-foreground">Complete quizzes to appear on the leaderboard!</p>
           </div>
         )}
       </div>
 
       {/* Sticky User Position Card */}
       {user && userEntry && !userInView && (
-        <div className="fixed bottom-20 left-4 right-4 z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <div className="max-w-lg mx-auto">
+        <div className="fixed bottom-20 left-4 right-4 z-40 lg:left-64" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="max-w-3xl mx-auto">
             <div className="glass-strong rounded-xl shadow-lg border border-primary/20">
               <LeaderboardRow entry={userEntry} isCurrentUser />
             </div>

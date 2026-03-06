@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Bell, MessageSquare, Users, Swords, Trophy, Gift, Settings, 
-  Trash2, Check, CheckCheck, ChevronLeft 
+  Trash2, CheckCheck, ChevronLeft 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 
-const NOTIFICATION_ICONS = {
+const NOTIFICATION_ICONS: Record<string, { icon: typeof Bell; color: string; bg: string }> = {
   chat: { icon: MessageSquare, color: 'text-primary', bg: 'bg-primary/10' },
   friend_request: { icon: Users, color: 'text-success', bg: 'bg-success/10' },
   battle_invite: { icon: Swords, color: 'text-destructive', bg: 'bg-destructive/10' },
@@ -39,7 +39,6 @@ export const Notifications = () => {
   const handleNotificationClick = (id: string, type: string, data?: Record<string, unknown>) => {
     markNotificationRead(id);
     
-    // Navigate based on notification type
     if (type === 'chat' && data?.chatId) {
       navigate(`/friends?chat=${data.chatId}`);
     } else if (type === 'friend_request') {
@@ -52,10 +51,10 @@ export const Notifications = () => {
   };
 
   return (
-    <div className="min-h-screen pb-safe-bottom">
+    <div className="pb-24">
       {/* Header */}
       <section className="px-4 py-4">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -98,7 +97,7 @@ export const Notifications = () => {
 
       {/* Tabs */}
       <section className="px-4">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-3xl mx-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-5 w-full mb-4">
               <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
@@ -154,7 +153,6 @@ export const Notifications = () => {
                               {notification.message}
                             </p>
                             
-                            {/* Action buttons for certain types */}
                             {notification.type === 'friend_request' && !notification.read && (
                               <div className="flex gap-2 mt-2">
                                 <Button size="sm" className="h-7 text-xs">Accept</Button>
@@ -195,8 +193,11 @@ export const Notifications = () => {
 
       {/* Notification Settings Link */}
       <section className="px-4 py-6">
-        <div className="max-w-lg mx-auto">
-          <div className="glass rounded-xl p-4">
+        <div className="max-w-3xl mx-auto">
+          <div 
+            className="glass rounded-xl p-4 cursor-pointer hover:bg-accent/50 transition-all"
+            onClick={() => navigate('/settings')}
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                 <Settings className="h-5 w-5 text-muted-foreground" />

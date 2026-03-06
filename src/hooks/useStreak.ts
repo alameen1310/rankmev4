@@ -39,16 +39,13 @@ export const useStreak = () => {
   });
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Calculate weekly progress based on streak
   const calculateWeeklyProgress = useCallback((streak: number, lastDate: string | null): boolean[] => {
     const progress = [false, false, false, false, false, false, false];
     if (!lastDate) return progress;
     
     const today = new Date();
-    const todayDayOfWeek = today.getDay(); // 0 = Sunday
-    const lastActiveDay = new Date(lastDate);
+    const todayDayOfWeek = today.getDay();
     
-    // Fill in completed days based on streak
     for (let i = 0; i < Math.min(streak, 7); i++) {
       const dayIndex = (todayDayOfWeek - i + 7) % 7;
       progress[dayIndex] = true;
@@ -57,34 +54,24 @@ export const useStreak = () => {
     return progress;
   }, []);
 
-  // Check if user already logged in today
-  const checkTodayLogin = useCallback((lastDate: string | null): boolean => {
-    if (!lastDate) return false;
+  const isSameDay = useCallback((dateStr: string | null): boolean => {
+    if (!dateStr) return false;
     const today = new Date().toISOString().split('T')[0];
-    const lastLoginDate = lastDate.split('T')[0];
-    return today === lastLoginDate;
+    const compareDate = dateStr.split('T')[0];
+    return today === compareDate;
   }, []);
 
-  // Load streak data from profile
+  // Load streak data from profile + daily_streaks
   useEffect(() => {
-    if (profile) {
-      const todayClaimed = checkTodayLogin(profile.created_at);
-      setStreakData({
-        currentStreak: profile.current_streak || 0,
-        longestStreak: profile.longest_streak || 0,
-        lastActiveDate: null, // Will be fetched from daily_streaks
-        weeklyProgress: calculateWeeklyProgress(profile.current_streak || 0, null),
-        todayClaimed,
-      });
-    }
-  }, [profile, calculateWeeklyProgress, checkTodayLogin]);
-
-  // Fetch last active date from daily_streaks
-  useEffect(() => {
-    const fetchLastActiveDate = async () => {
-      if (!user) return;
+    if (!profile || !user) return;
+    
+    const loadStreakData = async () => {
+      // Check last active date from profile
+      const lastActive = (profile as any).last_active_date || null;
+      const todayClaimed = isSameDay(lastActive);
       
-      const { data } = await supabase
+      // Also check daily_streaks table for more accurate data
+      const { data: streakRecord } = await supabase
         .from('daily_streaks')
         .select('streak_date')
         .eq('user_id', user.id)
@@ -92,28 +79,27 @@ export const useStreak = () => {
         .limit(1)
         .maybeSingle();
       
-      if (data) {
-        const todayClaimed = checkTodayLogin(data.streak_date);
-        setStreakData(prev => ({
-          ...prev,
-          lastActiveDate: data.streak_date,
-          weeklyProgress: calculateWeeklyProgress(prev.currentStreak, data.streak_date),
-          todayClaimed,
-        }));
-      }
+      const effectiveLastDate = streakRecord?.streak_date || lastActive;
+      const effectiveTodayClaimed = isSameDay(effectiveLastDate);
+      
+      setStreakData({
+        currentStreak: profile.current_streak || 0,
+        longestStreak: profile.longest_streak || 0,
+        lastActiveDate: effectiveLastDate,
+        weeklyProgress: calculateWeeklyProgress(profile.current_streak || 0, effectiveLastDate),
+        todayClaimed: effectiveTodayClaimed,
+      });
     };
     
-    fetchLastActiveDate();
-  }, [user, calculateWeeklyProgress, checkTodayLogin]);
+    loadStreakData();
+  }, [profile, user, calculateWeeklyProgress, isSameDay]);
 
-  // Update streak when user logs in
   const updateStreak = useCallback(async (): Promise<StreakReward | null> => {
     if (!user || isUpdating) return null;
     
     setIsUpdating(true);
     
     try {
-      // Call the database function to update streak
       const { error } = await supabase.rpc('update_user_streak', {
         user_uuid: user.id,
       });
@@ -127,8 +113,14 @@ export const useStreak = () => {
       // Refresh profile to get updated streak
       await refreshProfile();
       
-      // Check for streak rewards
-      const newStreak = (profile?.current_streak || 0) + 1;
+      // Fetch the new streak value directly
+      const { data: updatedProfile } = await supabase
+        .from('profiles')
+        .select('current_streak')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      const newStreak = updatedProfile?.current_streak || 1;
       const reward = STREAK_REWARDS[newStreak];
       
       if (reward) {
@@ -136,12 +128,12 @@ export const useStreak = () => {
           title: `${reward.icon} ${reward.message}`,
           description: `+${reward.points} points earned!`,
         });
+        setIsUpdating(false);
         return reward;
       }
       
-      // Default daily bonus
       const dailyBonus: StreakReward = {
-        points: 10 + Math.floor(newStreak / 7) * 5, // Bonus grows weekly
+        points: 10 + Math.floor(newStreak / 7) * 5,
         message: `Day ${newStreak}! Keep going!`,
         icon: "✨",
       };
@@ -158,9 +150,8 @@ export const useStreak = () => {
       setIsUpdating(false);
       return null;
     }
-  }, [user, profile, isUpdating, refreshProfile]);
+  }, [user, isUpdating, refreshProfile]);
 
-  // Claim daily reward
   const claimDailyReward = useCallback(async () => {
     if (streakData.todayClaimed) {
       toast({
@@ -184,7 +175,6 @@ export const useStreak = () => {
     return reward;
   }, [streakData.todayClaimed, updateStreak]);
 
-  // Get next reward info
   const getNextReward = useCallback((): { daysUntil: number; reward: StreakReward } | null => {
     const rewardDays = Object.keys(STREAK_REWARDS).map(Number).sort((a, b) => a - b);
     const nextRewardDay = rewardDays.find(day => day > streakData.currentStreak);

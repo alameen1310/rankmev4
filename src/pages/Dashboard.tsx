@@ -22,11 +22,11 @@ export const Dashboard = () => {
   const weeklyProgress = 65;
 
   return (
-    <div className="min-h-screen pb-4 pattern-geometric">
+    <div className="pb-4 pattern-geometric">
       {/* Welcome Section */}
       <section className="relative overflow-hidden px-4 py-5">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-warning/5" />
-        <div className="relative max-w-4xl mx-auto">
+        <div className="relative max-w-5xl mx-auto">
           <div className="glass rounded-2xl p-4 animate-slide-in-bottom game-card" style={{ animationDuration: '350ms' }}>
             <div className="flex items-center gap-4">
               <Avatar className="h-14 w-14 border-3 border-primary/30 shrink-0 animate-scale-in">
@@ -57,9 +57,9 @@ export const Dashboard = () => {
       </section>
 
       {/* Main content grid - responsive */}
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Left column */}
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {/* Column 1 */}
           <div className="space-y-4">
             {/* Daily Challenge */}
             <div className="animate-slide-in-bottom" style={{ animationDelay: '80ms' }}>
@@ -73,7 +73,10 @@ export const Dashboard = () => {
               <StatCard icon={Zap} label="Quizzes Taken" value={profile.total_quizzes_completed} iconColor="text-primary" />
               <StatCard icon={TrendingUp} label="This Week" value={`+${profile.weekly_points.toLocaleString()}`} iconColor="text-success" />
             </div>
+          </div>
 
+          {/* Column 2 */}
+          <div className="space-y-4">
             {/* Weekly Progress + Streak */}
             <div className="grid grid-cols-3 gap-3">
               <div className="glass rounded-2xl p-4 flex flex-col items-center justify-center game-card">
@@ -84,10 +87,7 @@ export const Dashboard = () => {
                 <StreakCounter streak={profile.current_streak} />
               </div>
             </div>
-          </div>
 
-          {/* Right column */}
-          <div className="space-y-4">
             {/* Tier Progress */}
             <div className="animate-fade-in" style={{ animationDelay: '200ms' }}>
               <TierProgress points={profile.total_points} compact />
@@ -125,7 +125,10 @@ export const Dashboard = () => {
                 </div>
               </Link>
             </div>
+          </div>
 
+          {/* Column 3 (on xl, shows below on smaller) */}
+          <div className="space-y-4 md:col-span-2 xl:col-span-1">
             {/* Daily Rewards */}
             <div className="animate-fade-in" style={{ animationDelay: '300ms' }}>
               <DailyRewards />

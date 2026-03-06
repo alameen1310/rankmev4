@@ -19,7 +19,7 @@ export const AppLayout = () => {
       <OfflineBanner />
       <UpdatePrompt />
       <SocialProofBanner />
-      <main className="flex-1 overflow-y-auto pt-[calc(56px+env(safe-area-inset-top))] pb-[calc(80px+env(safe-area-inset-bottom))] lg:pb-4 lg:pl-60">
+      <main className="flex-1 pt-[calc(56px+env(safe-area-inset-top))] pb-[calc(80px+env(safe-area-inset-bottom))] lg:pb-4 lg:pl-60">
         <AnimatePresence mode="wait">
           <PageTransition key={location.pathname}>
             <Outlet />

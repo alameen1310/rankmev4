@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, CreditCard, Building, User, Loader2, CheckCircle, Volume2, VolumeX, Bell, MessageSquare, Users, Swords, Settings as SettingsIcon } from 'lucide-react';
+import { ArrowLeft, Save, CreditCard, Building, User, Loader2, CheckCircle, Volume2, VolumeX, Bell, MessageSquare, Users, Swords } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,9 +31,7 @@ function loadNotificationPrefs(): NotificationPrefs {
   try {
     const stored = localStorage.getItem(NOTIFICATION_PREFS_KEY);
     return stored ? { ...defaultPrefs, ...JSON.parse(stored) } : defaultPrefs;
-  } catch {
-    return defaultPrefs;
-  }
+  } catch { return defaultPrefs; }
 }
 
 function saveNotificationPrefs(prefs: NotificationPrefs) {
@@ -47,30 +45,17 @@ export const Settings = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(defaultPrefs);
-
-  const [bankDetails, setBankDetails] = useState({
-    bank_name: '',
-    account_number: '',
-    account_name: '',
-  });
+  const [bankDetails, setBankDetails] = useState({ bank_name: '', account_number: '', account_name: '' });
 
   useEffect(() => {
     setSoundEnabled(soundEngine.isEnabled());
     setNotifPrefs(loadNotificationPrefs());
-    if (user) {
-      fetchBankDetails();
-    }
+    if (user) fetchBankDetails();
   }, [user?.id]);
 
   const fetchBankDetails = async () => {
     if (!user) return;
-
-    const { data } = await supabase
-      .from('profiles')
-      .select('bank_name, account_number, account_name')
-      .eq('id', user.id)
-      .maybeSingle();
-
+    const { data } = await supabase.from('profiles').select('bank_name, account_number, account_name').eq('id', user.id).maybeSingle();
     if (data) {
       setBankDetails({
         bank_name: data.bank_name || '',
@@ -82,21 +67,15 @@ export const Settings = () => {
 
   const handleSave = async () => {
     if (!user) return;
-
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          bank_name: bankDetails.bank_name || null,
-          account_number: bankDetails.account_number || null,
-          account_name: bankDetails.account_name || null,
-        })
-        .eq('id', user.id);
-
+      const { error } = await supabase.from('profiles').update({
+        bank_name: bankDetails.bank_name || null,
+        account_number: bankDetails.account_number || null,
+        account_name: bankDetails.account_name || null,
+      }).eq('id', user.id);
       if (error) throw error;
-
-      toast.success('Settings saved successfully!');
+      toast.success('Settings saved!');
       setIsSaved(true);
       await refreshProfile();
       setTimeout(() => setIsSaved(false), 2000);
@@ -111,24 +90,21 @@ export const Settings = () => {
   const handleToggleSound = (enabled: boolean) => {
     setSoundEnabled(enabled);
     soundEngine.setEnabled(enabled);
-    if (enabled) {
-      soundEngine.playTap();
-    }
+    if (enabled) soundEngine.playTap();
   };
 
   const handleToggleNotifPref = (key: keyof NotificationPrefs, value: boolean) => {
     const updated = { ...notifPrefs, [key]: value };
     setNotifPrefs(updated);
     saveNotificationPrefs(updated);
-    toast.success(`${key.replace('_', ' ')} notifications ${value ? 'enabled' : 'muted'}`);
   };
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="p-6 text-center">
-          <h2 className="text-xl font-bold mb-2">Login Required</h2>
-          <p className="text-muted-foreground mb-4">Please sign in to access settings</p>
+      <div className="flex items-center justify-center p-8">
+        <Card className="p-6 text-center max-w-sm">
+          <h2 className="text-lg font-bold mb-2">Login Required</h2>
+          <p className="text-sm text-muted-foreground mb-4">Sign in to access settings</p>
           <Button onClick={() => navigate('/login')}>Sign In</Button>
         </Card>
       </div>
@@ -136,157 +112,89 @@ export const Settings = () => {
   }
 
   const notifOptions = [
-    { key: 'friend_requests' as const, label: 'Friend Requests', desc: 'New friend request alerts', icon: Users },
-    { key: 'chat' as const, label: 'Chat Messages', desc: 'New message notifications', icon: MessageSquare },
-    { key: 'battle_updates' as const, label: 'Battle Updates', desc: 'PvP match & rank changes', icon: Swords },
-    { key: 'system' as const, label: 'System Alerts', desc: 'Rewards, badges & announcements', icon: Bell },
+    { key: 'friend_requests' as const, label: 'Friend Requests', icon: Users },
+    { key: 'chat' as const, label: 'Chat Messages', icon: MessageSquare },
+    { key: 'battle_updates' as const, label: 'Battle Updates', icon: Swords },
+    { key: 'system' as const, label: 'System Alerts', icon: Bell },
   ];
 
   return (
-    <div className="min-h-screen pb-24">
-      <div className="sticky top-0 z-40 glass-strong border-b border-border/50">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
+    <div className="pb-8">
+      {/* Header */}
+      <div className="bg-background sticky top-14 z-40 border-b border-border">
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-9 w-9">
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-xl font-bold">Settings</h1>
+          <h1 className="text-lg font-bold">Settings</h1>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Bank Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-primary" />
-                Bank Details
-              </CardTitle>
-              <CardDescription>Add your bank account details to receive cash prizes</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="bank_name" className="flex items-center gap-2">
-                  <Building className="h-4 w-4" />
-                  Bank Name
-                </Label>
-                <Input
-                  id="bank_name"
-                  placeholder="e.g., First Bank, GTBank, Access Bank"
-                  value={bankDetails.bank_name}
-                  onChange={(e) => setBankDetails((prev) => ({ ...prev, bank_name: e.target.value }))}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="account_number" className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    Account Number
-                  </Label>
-                  <Input
-                    id="account_number"
-                    placeholder="Enter account number"
-                    value={bankDetails.account_number}
-                    onChange={(e) => setBankDetails((prev) => ({ ...prev, account_number: e.target.value }))}
-                    maxLength={15}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="account_name" className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Account Name
-                  </Label>
-                  <Input
-                    id="account_name"
-                    placeholder="Name on account"
-                    value={bankDetails.account_name}
-                    onChange={(e) => setBankDetails((prev) => ({ ...prev, account_name: e.target.value }))}
-                  />
+      <div className="max-w-lg mx-auto px-4 py-5 space-y-5">
+        {/* Sound */}
+        <Card>
+          <CardContent className="pt-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {soundEnabled ? <Volume2 className="h-4 w-4 text-primary" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
+                <div>
+                  <p className="text-sm font-medium">Game Sounds</p>
+                  <p className="text-xs text-muted-foreground">Gameplay sound effects</p>
                 </div>
               </div>
+              <Switch checked={soundEnabled} onCheckedChange={handleToggleSound} />
+            </div>
+          </CardContent>
+        </Card>
 
-              <Button onClick={handleSave} disabled={isLoading} className="w-full mt-2">
-                {isLoading ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
-                ) : isSaved ? (
-                  <><CheckCircle className="h-4 w-4 mr-2" /> Saved!</>
-                ) : (
-                  <><Save className="h-4 w-4 mr-2" /> Save Settings</>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Notification Preferences */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-primary" />
-                Notification Preferences
-              </CardTitle>
-              <CardDescription>Choose which notifications you want to receive</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {notifOptions.map(opt => {
-                const Icon = opt.icon;
-                return (
-                  <div key={opt.key} className="flex items-center justify-between rounded-xl border border-border/60 p-4">
-                    <div className="flex items-center gap-3">
-                      <Icon className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium text-sm">{opt.label}</p>
-                        <p className="text-xs text-muted-foreground">{opt.desc}</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={notifPrefs[opt.key]}
-                      onCheckedChange={(v) => handleToggleNotifPref(opt.key, v)}
-                    />
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right column */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Sound Effects</CardTitle>
-              <CardDescription>Control gameplay sound feedback</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between rounded-xl border border-border/60 p-4">
-                <div className="flex items-center gap-3">
-                  {soundEnabled ? (
-                    <Volume2 className="h-5 w-5 text-primary" />
-                  ) : (
-                    <VolumeX className="h-5 w-5 text-muted-foreground" />
-                  )}
-                  <div>
-                    <p className="font-medium">Game Sounds</p>
-                    <p className="text-xs text-muted-foreground">
-                      Correct/wrong, streak, match found, victory
-                    </p>
-                  </div>
+        {/* Notifications */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">Notifications</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {notifOptions.map(opt => (
+              <div key={opt.key} className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <opt.icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">{opt.label}</span>
                 </div>
-                <Switch checked={soundEnabled} onCheckedChange={handleToggleSound} />
+                <Switch checked={notifPrefs[opt.key]} onCheckedChange={(v) => handleToggleNotifPref(opt.key, v)} />
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </CardContent>
+        </Card>
 
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">
-                Your bank details are securely stored and used only for prize payouts.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Bank Details */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <CreditCard className="h-4 w-4" /> Bank Details
+            </CardTitle>
+            <CardDescription className="text-xs">For cash prize payouts</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="bank_name" className="text-xs">Bank Name</Label>
+              <Input id="bank_name" placeholder="e.g., First Bank" value={bankDetails.bank_name} onChange={(e) => setBankDetails(prev => ({ ...prev, bank_name: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="account_number" className="text-xs">Account Number</Label>
+                <Input id="account_number" placeholder="0000000000" value={bankDetails.account_number} onChange={(e) => setBankDetails(prev => ({ ...prev, account_number: e.target.value }))} maxLength={15} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="account_name" className="text-xs">Account Name</Label>
+                <Input id="account_name" placeholder="Name on account" value={bankDetails.account_name} onChange={(e) => setBankDetails(prev => ({ ...prev, account_name: e.target.value }))} />
+              </div>
+            </div>
+            <Button onClick={handleSave} disabled={isLoading} className="w-full" size="sm">
+              {isLoading ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving...</> :
+               isSaved ? <><CheckCircle className="h-3.5 w-3.5 mr-1.5" /> Saved!</> :
+               <><Save className="h-3.5 w-3.5 mr-1.5" /> Save</>}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

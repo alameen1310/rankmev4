@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Search, X, SlidersHorizontal } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SearchBarProps {
@@ -22,19 +22,13 @@ export const SearchBar = ({
   const [value, setValue] = useState(controlledValue || '');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setValue(newValue);
-
-    // Debounce search
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    debounceRef.current = setTimeout(() => {
-      onSearch(newValue);
-    }, 300);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => onSearch(newValue), 300);
   }, [onSearch]);
 
   const handleClear = () => {
@@ -44,20 +38,12 @@ export const SearchBar = ({
   };
 
   return (
-    <div className={cn("relative flex items-center gap-2", className)}>
-      <div
-        className={cn(
-          "flex-1 flex items-center gap-3 h-12 px-4 rounded-xl",
-          "bg-card border border-border/60",
-          "transition-all duration-200",
-          isFocused && "border-primary/50 ring-2 ring-primary/20"
-        )}
-      >
-        <Search className={cn(
-          "h-5 w-5 shrink-0 transition-colors",
-          isFocused ? "text-primary" : "text-muted-foreground"
-        )} />
-        
+    <div className={cn("relative", className)}>
+      <div className={cn(
+        "flex items-center gap-2.5 h-10 px-3 rounded-lg bg-secondary border border-border transition-colors",
+        isFocused && "border-primary/50 ring-1 ring-primary/20"
+      )}>
+        <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
         <input
           ref={inputRef}
           type="text"
@@ -66,34 +52,14 @@ export const SearchBar = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
-          className={cn(
-            "flex-1 bg-transparent text-sm outline-none",
-            "placeholder:text-muted-foreground/70"
-          )}
+          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
         />
-
         {value && (
-          <button
-            onClick={handleClear}
-            className="p-1 rounded-full hover:bg-muted transition-colors touch-target"
-          >
-            <X className="h-4 w-4 text-muted-foreground" />
+          <button onClick={handleClear} className="p-1 rounded-full hover:bg-accent transition-colors">
+            <X className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         )}
       </div>
-
-      {showFilters && (
-        <button
-          onClick={onFilterClick}
-          className={cn(
-            "h-12 w-12 rounded-xl flex items-center justify-center",
-            "bg-card border border-border/60",
-            "hover:bg-accent transition-colors touch-target"
-          )}
-        >
-          <SlidersHorizontal className="h-5 w-5 text-muted-foreground" />
-        </button>
-      )}
     </div>
   );
 };

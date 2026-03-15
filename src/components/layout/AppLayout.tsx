@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { OfflineBanner } from '@/components/pwa/OfflineBanner';
 import { UpdatePrompt } from '@/components/pwa/UpdatePrompt';
-import { SocialProofBanner } from '@/components/social/SocialProofBanner';
 
 export const AppLayout = () => {
   const { isAuthenticated } = useAuth();
@@ -18,8 +17,7 @@ export const AppLayout = () => {
       <Header />
       <OfflineBanner />
       <UpdatePrompt />
-      <SocialProofBanner />
-      <main className="flex-1 pt-[calc(56px+env(safe-area-inset-top))] pb-[calc(80px+env(safe-area-inset-bottom))] lg:pb-4 lg:pl-60">
+      <main className="flex-1 pt-14 pb-16 lg:pb-4 lg:pl-56">
         <AnimatePresence mode="wait">
           <PageTransition key={location.pathname}>
             <Outlet />

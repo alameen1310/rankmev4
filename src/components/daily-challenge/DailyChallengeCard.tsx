@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Trophy, Clock, Zap, CheckCircle, ChevronRight, Flame, Target } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -28,13 +27,10 @@ export function DailyChallengeCard() {
       const tomorrow = new Date(now);
       tomorrow.setUTCHours(24, 0, 0, 0);
       const diff = tomorrow.getTime() - now.getTime();
-      
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      
       setTimeUntilReset(`${hours}h ${minutes}m`);
     };
-
     updateCountdown();
     const interval = setInterval(updateCountdown, 60000);
     return () => clearInterval(interval);
@@ -53,40 +49,35 @@ export function DailyChallengeCard() {
 
   if (!isAuthenticated) {
     return (
-      <Card className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-card to-warning/5 border-primary/30 game-card">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-warning/5" />
-        <div className="relative p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
-              <Trophy className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <div>
-              <h3 className="font-bold text-lg">Daily Challenge</h3>
-              <p className="text-sm text-muted-foreground">Sign in to compete!</p>
-            </div>
+      <div className="bg-card border border-border rounded-xl p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Trophy className="w-5 h-5 text-primary" />
           </div>
-          <Link to="/login">
-            <Button className="w-full mt-2 game-tap">
-              Sign In to Play
-            </Button>
-          </Link>
+          <div>
+            <h3 className="font-bold text-sm">Daily Challenge</h3>
+            <p className="text-xs text-muted-foreground">Sign in to compete</p>
+          </div>
         </div>
-      </Card>
+        <Link to="/login">
+          <Button size="sm" className="w-full">Sign In to Play</Button>
+        </Link>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <Card className="p-5 animate-pulse">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-xl bg-muted" />
+      <div className="bg-card border border-border rounded-xl p-4 animate-pulse">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-lg bg-secondary" />
           <div className="flex-1">
-            <div className="h-5 bg-muted rounded w-32 mb-2" />
-            <div className="h-4 bg-muted rounded w-24" />
+            <div className="h-4 bg-secondary rounded w-28 mb-1.5" />
+            <div className="h-3 bg-secondary rounded w-20" />
           </div>
         </div>
-        <div className="h-10 bg-muted rounded" />
-      </Card>
+        <div className="h-10 bg-secondary rounded" />
+      </div>
     );
   }
 
@@ -94,122 +85,83 @@ export function DailyChallengeCard() {
   const attempt = challengeData?.attempt;
 
   return (
-    <Card className={cn(
-      "relative overflow-hidden border-2 transition-all game-card",
-      isCompleted 
-        ? "bg-gradient-to-br from-success/10 via-card to-success/5 border-success/30"
-        : "bg-gradient-to-br from-primary/10 via-card to-warning/5 border-primary/30 glow-cta"
+    <div className={cn(
+      "bg-card border rounded-xl p-4",
+      isCompleted ? "border-success/30" : "border-primary/30"
     )}>
-      {/* Decorative background */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-warning rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
-      </div>
-
-      <div className="relative p-5">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-transform duration-200 hover:scale-110",
-              isCompleted 
-                ? "bg-gradient-to-br from-success to-success/70"
-                : "bg-gradient-to-br from-primary to-primary/70 animate-pulse-slow"
-            )}>
-              {isCompleted ? (
-                <CheckCircle className="w-6 h-6 text-success-foreground" />
-              ) : (
-                <Trophy className="w-6 h-6 text-primary-foreground" />
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-lg">Today's Challenge</h3>
-                <Badge variant="secondary" className="text-xs">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {isCompleted ? '✅ Challenge completed!' : '⚔️ Compete for the top spot!'}
-              </p>
-            </div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "w-10 h-10 rounded-lg flex items-center justify-center",
+            isCompleted ? "bg-success/10" : "bg-primary/10"
+          )}>
+            {isCompleted ? (
+              <CheckCircle className="w-5 h-5 text-success" />
+            ) : (
+              <Trophy className="w-5 h-5 text-primary" />
+            )}
+          </div>
+          <div>
+            <h3 className="font-bold text-sm">Today's Challenge</h3>
+            <p className="text-xs text-muted-foreground">
+              {isCompleted ? 'Completed!' : 'Compete for the top spot'}
+            </p>
           </div>
         </div>
-
-        {isCompleted && attempt ? (
-          <>
-            {/* Completed Stats */}
-            <div className="grid grid-cols-3 gap-3 mb-4 stagger-children">
-              <div className="glass rounded-lg p-3 text-center game-tap">
-                <div className="flex items-center justify-center gap-1 text-warning mb-1">
-                  <Trophy className="w-4 h-4" />
-                </div>
-                <p className="text-lg font-bold">#{challengeData?.rank || '-'}</p>
-                <p className="text-xs text-muted-foreground">Rank</p>
-              </div>
-              <div className="glass rounded-lg p-3 text-center game-tap">
-                <div className="flex items-center justify-center gap-1 text-primary mb-1">
-                  <Zap className="w-4 h-4" />
-                </div>
-                <p className="text-lg font-bold">{attempt.score}</p>
-                <p className="text-xs text-muted-foreground">Score</p>
-              </div>
-              <div className="glass rounded-lg p-3 text-center game-tap">
-                <div className="flex items-center justify-center gap-1 text-success mb-1">
-                  <Target className="w-4 h-4" />
-                </div>
-                <p className="text-lg font-bold">{Math.round(attempt.accuracy)}%</p>
-                <p className="text-xs text-muted-foreground">Accuracy</p>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2">
-              <Link to="/daily-challenge/leaderboard" className="flex-1">
-                <Button variant="default" className="w-full game-tap">
-                  <Trophy className="w-4 h-4 mr-2" />
-                  View Leaderboard
-                </Button>
-              </Link>
-            </div>
-
-            {/* Next Challenge Timer */}
-            <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Clock className="w-4 h-4 animate-pulse-slow" />
-              <span>Next challenge in {timeUntilReset}</span>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Challenge Info */}
-            <div className="flex items-center gap-4 mb-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Flame className="w-4 h-4 text-warning animate-streak-fire" />
-                <span>{challengeData?.challenge?.totalQuestions || 10} questions</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                <span>{Math.floor((challengeData?.challenge?.timeLimit || 600) / 60)} min limit</span>
-              </div>
-            </div>
-
-            {/* Start Button — glowing CTA */}
-            <Link to="/daily-challenge">
-              <Button size="lg" className="w-full h-12 text-base font-semibold shadow-md glow-cta game-tap">
-                <Zap className="w-5 h-5 mr-2" />
-                Start Challenge
-                <ChevronRight className="w-5 h-5 ml-auto" />
-              </Button>
-            </Link>
-
-            {/* Reset Timer */}
-            <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Clock className="w-4 h-4 animate-pulse-slow" />
-              <span>Resets in {timeUntilReset}</span>
-            </div>
-          </>
-        )}
+        <Badge variant="secondary" className="text-[10px]">
+          {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+        </Badge>
       </div>
-    </Card>
+
+      {isCompleted && attempt ? (
+        <>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="bg-secondary rounded-lg p-2 text-center">
+              <p className="text-sm font-bold">#{challengeData?.rank || '-'}</p>
+              <p className="text-[10px] text-muted-foreground">Rank</p>
+            </div>
+            <div className="bg-secondary rounded-lg p-2 text-center">
+              <p className="text-sm font-bold">{attempt.score}</p>
+              <p className="text-[10px] text-muted-foreground">Score</p>
+            </div>
+            <div className="bg-secondary rounded-lg p-2 text-center">
+              <p className="text-sm font-bold">{Math.round(attempt.accuracy)}%</p>
+              <p className="text-[10px] text-muted-foreground">Accuracy</p>
+            </div>
+          </div>
+          <Link to="/daily-challenge/leaderboard">
+            <Button variant="outline" size="sm" className="w-full">
+              <Trophy className="w-3.5 h-3.5 mr-1.5" /> View Leaderboard
+            </Button>
+          </Link>
+          <p className="text-[10px] text-muted-foreground text-center mt-2">
+            Next challenge in {timeUntilReset}
+          </p>
+        </>
+      ) : (
+        <>
+          <div className="flex items-center gap-3 mb-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Flame className="w-3.5 h-3.5 text-warning" />
+              {challengeData?.challenge?.totalQuestions || 10} questions
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" />
+              {Math.floor((challengeData?.challenge?.timeLimit || 600) / 60)} min
+            </span>
+          </div>
+          <Link to="/daily-challenge">
+            <Button className="w-full game-tap">
+              <Zap className="w-4 h-4 mr-1.5" /> Start Challenge
+              <ChevronRight className="w-4 h-4 ml-auto" />
+            </Button>
+          </Link>
+          <p className="text-[10px] text-muted-foreground text-center mt-2">
+            Resets in {timeUntilReset}
+          </p>
+        </>
+      )}
+    </div>
   );
 }

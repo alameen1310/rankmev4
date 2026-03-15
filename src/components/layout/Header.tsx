@@ -1,27 +1,20 @@
 import { Link } from 'react-router-dom';
-import { Bell, Sun, Moon, Trophy } from 'lucide-react';
+import { Bell, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGameState } from '@/contexts/GameStateContext';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export const Header = () => {
   const { theme, toggleTheme } = useTheme();
-  const { profile, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { unreadCount } = useGameState();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border/50 safe-top">
-      <div className="flex items-center justify-between h-14 px-4 max-w-7xl mx-auto">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="relative">
-            <Trophy className="h-6 w-6 text-primary transition-transform group-hover:scale-110" />
-            <div className="absolute -inset-1 bg-primary/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-          </div>
-          <span className="font-bold text-lg bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-            RankMe
-          </span>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border safe-top">
+      <div className="flex items-center justify-between h-14 px-4 max-w-5xl mx-auto lg:pl-64">
+        <Link to="/" className="flex items-center gap-2">
+          <span className="font-extrabold text-lg tracking-tight">RankMe</span>
         </Link>
 
         <div className="flex items-center gap-1">
@@ -29,41 +22,31 @@ export const Header = () => {
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            className="rounded-full h-10 w-10 touch-target"
+            className="rounded-full h-9 w-9"
           >
             {theme === 'light' ? (
-              <Moon className="h-5 w-5 text-muted-foreground" />
+              <Moon className="h-4 w-4 text-muted-foreground" />
             ) : (
-              <Sun className="h-5 w-5 text-warning" />
+              <Sun className="h-4 w-4 text-warning" />
             )}
           </Button>
 
           {isAuthenticated && (
-            <>
-              <Link to="/notifications">
-                <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 relative touch-target">
-                  <Bell className="h-5 w-5 text-muted-foreground" />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </Button>
-              </Link>
-
-              <Link to="/profile">
-                <Avatar className="h-9 w-9 border-2 border-primary/50 transition-all hover:border-primary hover:scale-105">
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                    {profile?.username?.slice(0, 2).toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </Link>
-            </>
+            <Link to="/notifications">
+              <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 relative">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 min-w-[14px] h-3.5 px-1 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
           )}
 
           {!isAuthenticated && (
             <Link to="/login">
-              <Button size="sm" className="h-9 touch-target">Sign In</Button>
+              <Button size="sm" className="h-8 text-xs">Sign In</Button>
             </Link>
           )}
         </div>

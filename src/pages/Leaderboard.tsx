@@ -1,13 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Clock, Trophy, RefreshCw } from 'lucide-react';
+import { Trophy, RefreshCw } from 'lucide-react';
 import { SearchBar } from '@/components/SearchBar';
-import { FilterChips } from '@/components/FilterChips';
 import { LeaderboardRow } from '@/components/LeaderboardRow';
 import { LeaderboardSkeleton } from '@/components/Skeleton';
-import { BottomSheet } from '@/components/BottomSheet';
 import { useAuth } from '@/contexts/AuthContext';
-import { getGlobalLeaderboard, getCountryLeaderboard, getUserRank } from '@/services/leaderboard';
-import { getSubjects, type DbSubject } from '@/services/quiz';
+import { getGlobalLeaderboard, getUserRank } from '@/services/leaderboard';
 import { cn } from '@/lib/utils';
 import type { LeaderboardTab, LeaderboardEntry } from '@/types';
 
@@ -15,45 +12,24 @@ const tabs: { id: LeaderboardTab; label: string }[] = [
   { id: 'global', label: 'Global' },
   { id: 'country', label: 'Country' },
   { id: 'friends', label: 'Friends' },
-  { id: 'subjects', label: 'Subjects' },
-];
-
-const tierFilters = [
-  { id: 'all', label: 'All Tiers' },
-  { id: 'champion', label: 'Champion', icon: '👑' },
-  { id: 'diamond', label: 'Diamond', icon: '💎' },
-  { id: 'platinum', label: 'Platinum', icon: '🏆' },
-  { id: 'gold', label: 'Gold', icon: '🥇' },
-  { id: 'silver', label: 'Silver', icon: '🥈' },
-  { id: 'bronze', label: 'Bronze', icon: '🥉' },
 ];
 
 export const Leaderboard = () => {
   const { profile, user } = useAuth();
   const [activeTab, setActiveTab] = useState<LeaderboardTab>('global');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
-  const [subjects, setSubjects] = useState<DbSubject[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
 
-  // Fetch leaderboard data
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [data, subjectsData] = await Promise.all([
-          getGlobalLeaderboard(100),
-          getSubjects(),
-        ]);
+        const data = await getGlobalLeaderboard(100);
         setLeaderboardData(data);
-        setSubjects(subjectsData);
-        
         if (user) {
           const rank = await getUserRank(user.id);
           setUserRank(rank?.rank || null);
@@ -66,13 +42,9 @@ export const Leaderboard = () => {
     fetchData();
   }, [user]);
 
-  const resetTime = '6d 12h 34m';
-
-  // Filter data based on tab, search, and tier
   const filteredData = useMemo(() => {
     let data = [...leaderboardData];
 
-    // Filter by tab
     switch (activeTab) {
       case 'country':
         data = data.filter(e => e.country === (profile?.country || 'US'));
@@ -80,39 +52,25 @@ export const Leaderboard = () => {
       case 'friends':
         data = data.slice(0, 15);
         break;
-      case 'subjects':
-        data = data.slice(0, 30);
-        break;
     }
 
-    // Filter by search
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      data = data.filter(e => 
+      data = data.filter(e =>
         e.username.toLowerCase().includes(query) ||
         e.country.toLowerCase().includes(query)
       );
     }
 
-    // Filter by tier
-    if (selectedTiers.length > 0 && !selectedTiers.includes('all')) {
-      data = data.filter(e => selectedTiers.includes(e.tier));
-    }
-
     return data;
-  }, [activeTab, searchQuery, selectedTiers, profile?.country, leaderboardData]);
+  }, [activeTab, searchQuery, profile?.country, leaderboardData]);
 
   const userEntry = userRank ? leaderboardData.find(e => e.rank === userRank) : null;
   const userInView = userRank ? filteredData.some(e => e.rank === userRank) : false;
 
-  // Show podium only when there are 3+ entries (no search/filter active)
-  const showPodium = activeTab === 'global' && !searchQuery && selectedTiers.length === 0 && filteredData.length >= 3;
-  // Start list after podium entries if podium is shown
+  // Show podium only for global with enough entries and no search
+  const showPodium = activeTab === 'global' && !searchQuery && filteredData.length >= 3;
   const listStartIndex = showPodium ? 3 : 0;
-
-  const handleLoadMore = () => {
-    setVisibleCount(prev => Math.min(prev + 20, filteredData.length));
-  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -126,43 +84,33 @@ export const Leaderboard = () => {
   };
 
   return (
-    <div className="min-h-screen pattern-trophy">
-      {/* Sticky Header */}
-      <div className="glass-strong sticky top-14 z-40 border-b border-border/50">
-        <div className="max-w-3xl mx-auto px-4 py-3 space-y-3">
-          {/* Title Row */}
+    <div className="pb-8">
+      {/* Header */}
+      <div className="bg-background sticky top-14 z-40 border-b border-border">
+        <div className="max-w-2xl mx-auto px-4 py-3 space-y-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-warning" />
-              Leaderboard
-            </h1>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/80 px-2.5 py-1.5 rounded-full">
-              <Clock className="h-3 w-3" />
-              <span>Resets {resetTime}</span>
-            </div>
+            <h1 className="text-lg font-bold">Leaderboard</h1>
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="text-xs text-muted-foreground flex items-center gap-1 p-2 rounded-lg hover:bg-accent transition-colors"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
+            </button>
           </div>
 
-          {/* Search Bar */}
-          <SearchBar
-            placeholder="Search players..."
-            onSearch={setSearchQuery}
-            showFilters
-            onFilterClick={() => setShowFilters(true)}
-          />
+          <SearchBar placeholder="Search players..." onSearch={setSearchQuery} />
 
           {/* Tabs */}
-          <div className="flex gap-1 p-1 bg-muted/60 rounded-xl overflow-x-auto scrollbar-hide">
+          <div className="flex gap-1 p-1 bg-secondary rounded-lg">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setVisibleCount(20);
-                }}
+                onClick={() => { setActiveTab(tab.id); setVisibleCount(20); }}
                 className={cn(
-                  "flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all min-w-[70px] touch-target",
+                  "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors",
                   activeTab === tab.id
-                    ? "bg-card text-foreground shadow-sm"
+                    ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -170,115 +118,86 @@ export const Leaderboard = () => {
               </button>
             ))}
           </div>
-
-          {/* Tier Filters */}
-          <FilterChips
-            options={tierFilters}
-            selected={selectedTiers}
-            onChange={setSelectedTiers}
-          />
         </div>
       </div>
 
-      {/* Leaderboard Content */}
-      <div className="max-w-3xl mx-auto px-4 py-4">
-        {/* Top 3 Podium */}
+      <div className="max-w-2xl mx-auto px-4 py-4">
+        {/* Podium — clean */}
         {showPodium && (
-          <div className="flex items-end justify-center gap-2 mb-6 pt-4">
-            {/* 2nd Place */}
-            <div className="flex flex-col items-center animate-slide-in-bottom" style={{ animationDelay: '150ms' }}>
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center mb-2 shadow-lg game-tap">
-                <span className="text-xl">🥈</span>
-              </div>
-              <span className="font-semibold text-xs truncate max-w-[70px] text-center">
+          <div className="flex items-end justify-center gap-3 mb-6 pt-2">
+            {/* 2nd */}
+            <div className="flex flex-col items-center w-20">
+              <span className="text-2xl mb-1">🥈</span>
+              <span className="font-semibold text-xs truncate w-full text-center">
                 {filteredData[1]?.username.split(' ')[0]}
               </span>
               <span className="text-[10px] text-muted-foreground">
                 {filteredData[1]?.points.toLocaleString()}
               </span>
-              <div className="w-16 h-14 bg-gradient-to-t from-gray-400/40 to-gray-300/20 rounded-t-lg mt-2" />
+              <div className="w-full h-12 bg-secondary rounded-t-lg mt-2" />
             </div>
 
-            {/* 1st Place */}
-            <div className="flex flex-col items-center animate-slide-in-bottom" style={{ animationDelay: '0ms' }}>
-              <div className="relative">
-                <div className="w-18 h-18 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center mb-2 shadow-gold-glow p-4 animate-glow game-tap">
-                  <span className="text-2xl">🥇</span>
-                </div>
-                <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-xl animate-bounce-subtle">👑</span>
-              </div>
-              <span className="font-bold text-sm truncate max-w-[80px] text-center">
+            {/* 1st */}
+            <div className="flex flex-col items-center w-24">
+              <span className="text-3xl mb-1">🥇</span>
+              <span className="font-bold text-sm truncate w-full text-center">
                 {filteredData[0]?.username.split(' ')[0]}
               </span>
               <span className="text-xs text-muted-foreground">
                 {filteredData[0]?.points.toLocaleString()}
               </span>
-              <div className="w-20 h-20 bg-gradient-to-t from-yellow-500/40 to-yellow-400/20 rounded-t-lg mt-2" />
+              <div className="w-full h-16 bg-primary/15 rounded-t-lg mt-2" />
             </div>
 
-            {/* 3rd Place */}
-            <div className="flex flex-col items-center animate-slide-in-bottom" style={{ animationDelay: '250ms' }}>
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center mb-2 shadow-lg game-tap">
-                <span className="text-xl">🥉</span>
-              </div>
-              <span className="font-semibold text-xs truncate max-w-[70px] text-center">
+            {/* 3rd */}
+            <div className="flex flex-col items-center w-20">
+              <span className="text-2xl mb-1">🥉</span>
+              <span className="font-semibold text-xs truncate w-full text-center">
                 {filteredData[2]?.username.split(' ')[0]}
               </span>
               <span className="text-[10px] text-muted-foreground">
                 {filteredData[2]?.points.toLocaleString()}
               </span>
-              <div className="w-16 h-10 bg-gradient-to-t from-amber-700/40 to-amber-600/20 rounded-t-lg mt-2" />
+              <div className="w-full h-8 bg-secondary rounded-t-lg mt-2" />
             </div>
           </div>
         )}
 
         {/* Results count */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-muted-foreground">
             {filteredData.length} player{filteredData.length !== 1 ? 's' : ''}
           </span>
-          <div className="flex items-center gap-2">
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="text-xs text-primary font-medium"
-              >
-                Clear search
-              </button>
-            )}
-            <button 
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="text-xs text-muted-foreground flex items-center gap-1 touch-target"
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-xs text-primary font-medium"
             >
-              <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
-              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              Clear
             </button>
-          </div>
+          )}
         </div>
 
-        {/* List with loading state */}
+        {/* List */}
         {isLoading ? (
           <LeaderboardSkeleton />
         ) : (
-          <div className="space-y-2 stagger-children">
-            {filteredData
-              .slice(listStartIndex, visibleCount)
-              .map((entry) => (
-                <LeaderboardRow
-                  key={entry.id}
-                  entry={entry}
-                  isCurrentUser={entry.id === user?.id}
-                />
-              ))}
+          <div className="space-y-1.5">
+            {filteredData.slice(listStartIndex, visibleCount).map((entry) => (
+              <LeaderboardRow
+                key={entry.id}
+                entry={entry}
+                isCurrentUser={entry.id === user?.id}
+              />
+            ))}
           </div>
         )}
 
         {/* Load More */}
         {visibleCount < filteredData.length && (
           <button
-            onClick={handleLoadMore}
-            className="w-full py-3 mt-4 text-sm font-medium text-primary hover:bg-primary/5 rounded-xl transition-colors touch-target"
+            onClick={() => setVisibleCount(prev => Math.min(prev + 20, filteredData.length))}
+            className="w-full py-3 mt-3 text-sm font-medium text-primary hover:bg-accent rounded-lg transition-colors"
           >
             Load more ({filteredData.length - visibleCount} remaining)
           </button>
@@ -286,104 +205,24 @@ export const Leaderboard = () => {
 
         {/* Empty state */}
         {filteredData.length === 0 && !isLoading && (
-          <div className="text-center py-12">
-            <Trophy className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-40" />
+          <div className="text-center py-16">
+            <Trophy className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
             <h3 className="font-semibold mb-1">No players yet</h3>
-            <p className="text-sm text-muted-foreground">Complete quizzes to appear on the leaderboard!</p>
+            <p className="text-sm text-muted-foreground">Complete quizzes to appear here!</p>
           </div>
         )}
       </div>
 
-      {/* Sticky User Position Card */}
+      {/* Sticky user card */}
       {user && userEntry && !userInView && (
-        <div className="fixed bottom-20 left-4 right-4 z-40 lg:left-64" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <div className="max-w-3xl mx-auto">
-            <div className="glass-strong rounded-xl shadow-lg border border-primary/20">
+        <div className="fixed bottom-16 left-4 right-4 z-40 lg:left-60" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-card rounded-xl shadow-lg border border-primary/20">
               <LeaderboardRow entry={userEntry} isCurrentUser />
             </div>
           </div>
         </div>
       )}
-
-      {/* Filter Bottom Sheet */}
-      <BottomSheet
-        isOpen={showFilters}
-        onClose={() => setShowFilters(false)}
-        title="Filter Leaderboard"
-      >
-        <div className="space-y-6">
-          {/* Subject Filter (for subjects tab) */}
-          {activeTab === 'subjects' && (
-            <div>
-              <h3 className="font-semibold mb-3">Subject</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setSelectedSubject(null)}
-                  className={cn(
-                    "p-3 rounded-xl text-left transition-all touch-target",
-                    !selectedSubject 
-                      ? "bg-primary text-primary-foreground" 
-                      : "bg-muted hover:bg-accent"
-                  )}
-                >
-                  All Subjects
-                </button>
-                {subjects.map(subject => (
-                  <button
-                    key={subject.id}
-                    onClick={() => setSelectedSubject(subject.slug)}
-                    className={cn(
-                      "p-3 rounded-xl text-left transition-all flex items-center gap-2 touch-target",
-                      selectedSubject === subject.slug 
-                        ? "bg-primary text-primary-foreground" 
-                        : "bg-muted hover:bg-accent"
-                    )}
-                  >
-                    <span>{subject.icon}</span>
-                    <span className="text-sm font-medium truncate">{subject.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Tier Filter */}
-          <div>
-            <h3 className="font-semibold mb-3">Tier</h3>
-            <div className="space-y-2">
-              {tierFilters.slice(1).map(tier => (
-                <button
-                  key={tier.id}
-                  onClick={() => {
-                    if (selectedTiers.includes(tier.id)) {
-                      setSelectedTiers(selectedTiers.filter(t => t !== tier.id));
-                    } else {
-                      setSelectedTiers([...selectedTiers, tier.id]);
-                    }
-                  }}
-                  className={cn(
-                    "w-full p-3 rounded-xl text-left transition-all flex items-center gap-3 touch-target",
-                    selectedTiers.includes(tier.id)
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted hover:bg-accent"
-                  )}
-                >
-                  <span className="text-lg">{tier.icon}</span>
-                  <span className="font-medium">{tier.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Apply button */}
-          <button
-            onClick={() => setShowFilters(false)}
-            className="w-full py-3 bg-primary text-primary-foreground font-semibold rounded-xl touch-target"
-          >
-            Apply Filters
-          </button>
-        </div>
-      </BottomSheet>
     </div>
   );
 };

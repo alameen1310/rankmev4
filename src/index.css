@@ -186,12 +186,15 @@
   }
 
   .glass-strong {
-    @apply bg-card/98 backdrop-blur-sm border border-border;
+    @apply backdrop-blur-sm border border-border;
+    background-color: hsl(var(--card) / 0.98);
     box-shadow: var(--shadow-sm);
   }
 
   .glass-subtle {
-    @apply bg-card/80 border border-border/50;
+    @apply border;
+    background-color: hsl(var(--card) / 0.8);
+    border-color: hsl(var(--border) / 0.5);
   }
 
   /* ============ TIER STYLES ============ */

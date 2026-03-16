@@ -63,13 +63,18 @@ export const BottomNavigation = () => {
                   key={to}
                   to={to}
                   className={cn(
-                    'flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-lg transition-colors',
-                    'min-w-[56px] min-h-[44px]',
-                    isActive ? 'text-primary' : 'text-muted-foreground',
+                    'flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-lg',
+                    'min-w-[56px] min-h-[44px] transition-all duration-150',
+                    isActive
+                      ? 'text-primary'
+                      : 'text-muted-foreground active:scale-90',
                   )}
                 >
-                  <div className="relative">
-                    <Icon className="h-5 w-5" />
+                  <div className={cn(
+                    "relative transition-transform duration-150",
+                    isActive && "scale-110"
+                  )}>
+                    <Icon className={cn("h-5 w-5", isActive && "stroke-[2.5]")} />
                     {showUnread && (
                       <span className="absolute -top-1 -right-1.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                         {unreadMessages > 9 ? '9+' : unreadMessages}
@@ -77,11 +82,14 @@ export const BottomNavigation = () => {
                     )}
                   </div>
                   <span className={cn(
-                    'text-[10px] font-medium',
-                    isActive && 'font-semibold',
+                    'text-[10px]',
+                    isActive ? 'font-bold' : 'font-medium',
                   )}>
                     {label}
                   </span>
+                  {isActive && (
+                    <div className="absolute bottom-1 w-4 h-0.5 rounded-full bg-primary" />
+                  )}
                 </NavLink>
               );
             })}

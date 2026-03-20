@@ -19,7 +19,7 @@ export const Header = () => {
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
             <Zap className="h-4.5 w-4.5 text-primary-foreground" />
           </div>
-          <span className="font-extrabold text-lg tracking-tight">RankMe</span>
+          <span className="font-extrabold text-lg tracking-tight text-primary">RankMe</span>
         </Link>
 
         {/* Right: Actions */}
@@ -51,7 +51,7 @@ export const Header = () => {
               </Link>
 
               <Link to="/profile">
-                <Avatar className="h-8 w-8 border-2 border-primary/20 cursor-pointer game-tap">
+                <Avatar className="h-9 w-9 border-2 border-primary/20 cursor-pointer game-tap min-w-[44px] min-h-[44px] flex items-center justify-center">
                   {profile?.avatar_url && (
                     <AvatarImage src={profile.avatar_url} alt={profile?.username || 'User'} />
                   )}

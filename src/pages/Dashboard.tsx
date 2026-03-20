@@ -53,7 +53,7 @@ export const Dashboard = () => {
           <Link to="/quiz" className="block">
             <Button
               size="lg"
-              className="w-full h-14 text-base font-semibold rounded-xl game-tap shadow-md"
+              className="w-full h-14 text-base font-semibold rounded-xl game-tap shadow-[0_6px_18px_rgba(79,110,247,0.16)]"
             >
               <Zap className="h-5 w-5 mr-2" />
               Start Quiz
@@ -62,13 +62,13 @@ export const Dashboard = () => {
           <div className="grid grid-cols-2 gap-2">
             <Link to="/pvp">
               <Button variant="outline" className="w-full h-11 rounded-xl game-tap text-sm">
-                <Swords className="h-4 w-4 mr-1.5" />
+                <Swords className="h-4 w-4 mr-1.5 text-primary" />
                 PvP Arena
               </Button>
             </Link>
             <Link to="/leaderboard">
               <Button variant="outline" className="w-full h-11 rounded-xl game-tap text-sm">
-                <Trophy className="h-4 w-4 mr-1.5" />
+                <Trophy className="h-4 w-4 mr-1.5 text-primary" />
                 Leaderboard
               </Button>
             </Link>

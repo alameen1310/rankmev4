@@ -10,6 +10,7 @@ import { MysteryBoxCard } from '@/components/dashboard/MysteryBoxCard';
 import { DailyRewardsStreak } from '@/components/dashboard/DailyRewardsStreak';
 import { FriendActivity } from '@/components/dashboard/FriendActivity';
 import { LivePvPCard } from '@/components/dashboard/LivePvPCard';
+import { WeakAreasCard } from '@/components/dashboard/WeakAreasCard';
 import { cn } from '@/lib/utils';
 
 export const Dashboard = () => {
@@ -102,6 +103,9 @@ export const Dashboard = () => {
 
         {/* ── Live PvP ── */}
         <LivePvPCard />
+
+        {/* ── Weak Areas ── */}
+        <WeakAreasCard />
 
         {/* ── Friend Activity ── */}
         <FriendActivity />

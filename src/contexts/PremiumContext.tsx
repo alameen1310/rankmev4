@@ -81,6 +81,7 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
   }, [refreshPremiumStatus]);
 
   const hasFeature = (feature: PremiumFeature): boolean => {
+    if (feature === 'themes') return true; // Free for all users during beta
     if (isPremium) return true;
     return false;
   };

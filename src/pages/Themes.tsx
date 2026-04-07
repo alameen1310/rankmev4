@@ -42,9 +42,7 @@ export function Themes() {
     : availableThemes.filter(t => t.category === selectedCategory);
 
   const handleSelectTheme = (theme: PremiumTheme) => {
-    if (theme.type === 'premium' && !isPremium) {
-      return;
-    }
+    // All themes are free during beta
     // Check if seasonal theme is available
     if (theme.seasonal && !isThemeAvailable(theme)) {
       return;
@@ -153,7 +151,7 @@ export function Themes() {
         <div className="grid grid-cols-2 gap-3">
           {filteredThemes.map(theme => {
             const isActive = theme.id === premiumTheme.id;
-            const canUse = theme.type === 'free' || isPremium;
+            const canUse = true; // All themes free during beta
             const isSeasonalAvailable = !theme.seasonal || isThemeAvailable(theme);
             const isAvailable = canUse && isSeasonalAvailable;
             

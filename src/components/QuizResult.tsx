@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Target, Clock, Zap, RotateCcw, Home, Share2 } from 'lucide-react';
+import { Trophy, Target, Clock, Zap, RotateCcw, Home, Share2, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Confetti } from '@/components/Confetti';
 import { cn } from '@/lib/utils';
 import { useQuiz } from '@/contexts/QuizContext';
+import { PostQuizReview } from '@/components/quiz/PostQuizReview';
 import type { QuizResult as QuizResultType } from '@/types';
 
 interface QuizResultProps {
@@ -44,8 +45,9 @@ const useCountUp = (target: number, duration: number, startDelay: number) => {
 
 export const QuizResult = ({ result, onRetry }: QuizResultProps) => {
   const navigate = useNavigate();
-  const { submitResults } = useQuiz();
+  const { submitResults, state } = useQuiz();
   const [phase, setPhase] = useState(0);
+  const [showReview, setShowReview] = useState(false);
 
   // Submit results to database when component mounts
   useEffect(() => {
@@ -87,6 +89,17 @@ export const QuizResult = ({ result, onRetry }: QuizResultProps) => {
     if (result.accuracy >= 60) return 'You\'re improving! Practice more 📚';
     return 'Every attempt makes you better! 🌱';
   };
+
+  if (showReview) {
+    return (
+      <PostQuizReview
+        questions={state.questions}
+        answers={state.answers}
+        times={state.times}
+        onClose={() => setShowReview(false)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center p-4">
@@ -182,7 +195,22 @@ export const QuizResult = ({ result, onRetry }: QuizResultProps) => {
         <p className="text-sm font-medium">{getComparison()}</p>
       </div>
 
-      {/* Phase 5: CTA Actions */}
+      {/* Phase 5: Review CTA */}
+      <div className={cn(
+        "w-full max-w-xs mb-3 transition-all duration-400",
+        phase >= 5 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+      )}>
+        <Button
+          variant="outline"
+          className="w-full h-11 touch-target border-primary/30 text-primary"
+          onClick={() => setShowReview(true)}
+        >
+          <BookOpen className="h-4 w-4 mr-2" />
+          Review Your Answers
+        </Button>
+      </div>
+
+      {/* CTA Actions */}
       <div className={cn(
         "flex gap-3 w-full max-w-xs transition-all duration-400",
         phase >= 5 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"

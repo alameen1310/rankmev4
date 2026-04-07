@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Zap, Target, Flame, Skull } from 'lucide-react';
+import { ArrowLeft, BookOpen, Zap, Target, Flame, Skull, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { QuizModeSelector } from '@/components/quiz/QuizModeSelector';
 import { SubjectSelector, type SubjectConfig } from '@/components/quiz/SubjectSelector';
@@ -9,6 +9,7 @@ import { QuizResult } from '@/components/QuizResult';
 import { TimeAttackQuiz, type TimeAttackResult } from '@/components/quiz/TimeAttackQuiz';
 import { SurvivalQuiz, type SurvivalResult } from '@/components/quiz/SurvivalQuiz';
 import { FocusDrillQuiz, type FocusDrillResult } from '@/components/quiz/FocusDrillQuiz';
+import { SmartPracticeQuiz } from '@/components/quiz/SmartPracticeQuiz';
 import { useQuiz } from '@/contexts/QuizContext';
 import { QUIZ_MODES, type QuizModeType } from '@/types/quiz-modes';
 import type { Subject } from '@/types';
@@ -223,12 +224,26 @@ export const Quiz = () => {
     );
   }
 
+  // Show Smart Practice mode
+  if (step === 'playing' && selectedMode === 'smart-practice' && subjectConfig) {
+    return (
+      <SmartPracticeQuiz
+        subject={subjectConfig.subject}
+        onComplete={(result) => {
+          console.log('Smart Practice complete:', result);
+        }}
+        onExit={handleExitSpecialMode}
+      />
+    );
+  }
+
   // Show subject selection
   if (step === 'subject-select' && selectedMode) {
     const modeConfig = QUIZ_MODES[selectedMode];
     const ModeIcon = selectedMode === 'quick-play' ? Zap : 
                      selectedMode === 'focus-drill' ? Target :
-                     selectedMode === 'time-attack' ? Flame : Skull;
+                     selectedMode === 'time-attack' ? Flame :
+                     selectedMode === 'smart-practice' ? Brain : Skull;
 
     return (
       <div className="min-h-screen">

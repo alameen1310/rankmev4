@@ -4,7 +4,8 @@ export type QuizModeType =
   | 'quick-play'    // XP-only, subject selection, 10 Qs, 30s each
   | 'focus-drill'   // XP-only, topic selection, accuracy-focused
   | 'time-attack'   // XP-only, global timer, combo multipliers
-  | 'survival';     // XP-only, one wrong = elimination
+  | 'survival'      // XP-only, one wrong = elimination
+  | 'smart-practice'; // XP-only, guided solving with hints
 
 export type PvPModeType = 
   | 'casual-duel'   // XP-only, friendly competition
@@ -104,6 +105,21 @@ export const QUIZ_MODES: Record<QuizModeType, QuizModeConfig> = {
     timePerQuestion: 20, // Faster timer
     globalTimer: null,
     features: ['Increasing difficulty', 'One life only', 'Shareable rounds', 'High tension'],
+  },
+  'smart-practice': {
+    id: 'smart-practice',
+    name: 'Smart Practice',
+    description: 'Guided solving with hints and retries — learn by doing',
+    icon: '🧠',
+    color: 'from-teal-500 to-cyan-500',
+    rewardType: 'xp',
+    allowSubjectSelection: true,
+    allowTopicSelection: false,
+    allowDifficultySelection: false,
+    questionCount: 10,
+    timePerQuestion: null,
+    globalTimer: null,
+    features: ['No timer', 'Progressive hints', 'Retry without penalty', 'Bonus XP for first-try'],
   },
 };
 

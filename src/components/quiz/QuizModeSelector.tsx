@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Target, Flame, Skull, ArrowRight, Star, Trophy } from 'lucide-react';
+import { Zap, Target, Flame, Skull, ArrowRight, Star, Trophy, Brain } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ const modeIcons: Record<QuizModeType, React.ReactNode> = {
   'focus-drill': <Target className="w-6 h-6" />,
   'time-attack': <Flame className="w-6 h-6" />,
   'survival': <Skull className="w-6 h-6" />,
+  'smart-practice': <Brain className="w-6 h-6" />,
 };
 
 export function QuizModeSelector({ onModeSelect, className }: QuizModeSelectorProps) {
